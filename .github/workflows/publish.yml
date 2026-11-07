@@ -1,9 +1,12 @@
 name: Publish image
 
-# Runs only when you push a tag such as v2026.11.07.01
+# Publishes the image when you push a tag such as v2026.11.07.01.
+# It can also be started by hand (Actions -> Publish image -> Run workflow): then it only BUILDS both
+# architectures and publishes nothing, so the workflow can be tested without touching the registry.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,24 +16,28 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Version from the tag
+      - name: Version (from the tag, or from the Dockerfile when started by hand)
         id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then v="${GITHUB_REF_NAME#v}"; else v="$(sed -n 's/^ARG APP_VERSION=//p' Dockerfile | head -1)"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "push=$([ "${GITHUB_REF_TYPE}" = "tag" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
+        if: steps.ver.outputs.push == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@v6
         id: meta
         with:
           images: ghcr.io/${{ github.repository }}
@@ -38,12 +45,12 @@ jobs:
             type=raw,value=${{ steps.ver.outputs.version }}
             type=raw,value=latest
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         id: build
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ steps.ver.outputs.push == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
