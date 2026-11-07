@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Entrar · iCloud sync</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2d9cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="iCloud NAS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<main class="narrow">
+  <section class="card" id="step-password">
+    <h1>iCloud ⇄ NAS</h1>
+    <p class="muted">Inicia sesión para continuar.</p>
+    <form id="form-password" class="vstack">
+      <label>Usuario<input id="user" autocomplete="username" autocapitalize="none" required></label>
+      <label>Contraseña<input id="password" type="password" autocomplete="current-password" required></label>
+      <label class="check"><input id="remember" type="checkbox"> Recordarme en este dispositivo (30 días)</label>
+      <button class="primary" type="submit">Entrar</button>
+    </form>
+    <p class="small"><button class="link" id="go-forgot" type="button">¿Has olvidado la contraseña?</button></p>
+  </section>
+
+  <section class="card hidden" id="step-forgot">
+    <h2>Restablecer la contraseña</h2>
+    <p class="small">Te enviaremos por email un código de 6 dígitos. Tu segundo factor no cambia: después
+      seguirás necesitando el código de tu app para entrar.</p>
+    <form id="form-forgot" class="vstack">
+      <label>Usuario<input id="forgot-user" autocomplete="username" autocapitalize="none" required></label>
+      <button class="primary" type="submit">Enviarme un código</button>
+    </form>
+    <p class="small"><button class="link back-login" type="button">← Volver</button></p>
+  </section>
+
+  <section class="card hidden" id="step-forgot-code">
+    <h2>Nueva contraseña</h2>
+    <p class="small" id="forgot-sent"></p>
+    <form id="form-forgot-code" class="vstack">
+      <label>Código del email<input id="forgot-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required></label>
+      <label>Contraseña nueva (mínimo 12 caracteres)<input id="forgot-new" type="password" autocomplete="new-password" minlength="12" required></label>
+      <button class="primary" type="submit">Cambiar contraseña</button>
+    </form>
+    <p class="small"><button class="link back-login" type="button">← Volver</button></p>
+  </section>
+
+  <section class="card hidden" id="step-2fa">
+    <h2>Código de verificación</h2>
+    <p class="muted">Abre tu app de autenticación e introduce el código de 6 dígitos. Si has perdido el
+      móvil, puedes usar uno de tus códigos de recuperación.</p>
+    <form id="form-2fa" class="vstack">
+      <input id="code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="14"
+             placeholder="123456" aria-label="Código de verificación" required>
+      <button class="primary" type="submit">Verificar</button>
+    </form>
+  </section>
+
+  <section class="card hidden" id="step-setup">
+    <h2>Activa el segundo factor</h2>
+    <p>Para entrar hace falta, además de la contraseña, un código de una app de autenticación
+      (Google Authenticator, Microsoft Authenticator, 1Password, Contraseñas de iOS…).</p>
+    <ol class="small">
+      <li>Escanea este código QR con la app (o copia la clave a mano).</li>
+      <li>Escribe el código de 6 dígitos que te muestre.</li>
+    </ol>
+    <div class="qr" id="qr"></div>
+    <p class="small">¿Estás en el propio móvil? <a class="btnlike" id="otp-link" href="#">Añadir a mi app de autenticación</a></p>
+    <p class="small muted">O copia la clave a mano: <code id="secret"></code> <button class="link" id="copy-secret" type="button">Copiar</button></p>
+    <form id="form-setup" class="vstack">
+      <input id="setup-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+             placeholder="123456" aria-label="Código de la app" required>
+      <button class="primary" type="submit">Activar</button>
+    </form>
+  </section>
+
+  <section class="card hidden" id="step-codes">
+    <h2>Guarda tus códigos de recuperación</h2>
+    <p>Si pierdes el móvil, cada uno de estos códigos te deja entrar <b>una sola vez</b>. Guárdalos en
+      un sitio seguro (gestor de contraseñas o papel). No se volverán a mostrar.</p>
+    <pre class="codes" id="codes"></pre>
+    <button id="copy-codes">Copiar</button>
+    <button class="primary" id="codes-done">Ya los he guardado</button>
+  </section>
+
+  <p class="form-msg bad" id="msg" role="alert"></p>
+  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente · Source code (AGPL-3.0)</a></p>
+</main>
+<script src="/static/login.js"></script>
+</body>
+</html>

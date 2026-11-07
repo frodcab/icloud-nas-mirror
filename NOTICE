@@ -1,0 +1,43 @@
+icloud-nas-mirror
+Copyright (C) 2026 F. Javier R. Cabero
+Licensed under the GNU Affero General Public License v3.0 only (see LICENSE).
+
+This project is not affiliated with, endorsed by or sponsored by Apple Inc.
+"iCloud" is a trademark of Apple Inc.
+
+THIRD-PARTY SOFTWARE
+====================
+The Python dependencies below are installed from PyPI (see requirements.txt) and keep their own licences.
+
+  pyicloud                 MIT                       https://github.com/timlaing/pyicloud
+  fastapi                  MIT                       https://github.com/fastapi/fastapi
+  starlette                BSD-3-Clause              https://github.com/encode/starlette
+  pydantic                 MIT                       https://github.com/pydantic/pydantic
+  uvicorn                  BSD-3-Clause              https://github.com/encode/uvicorn
+  requests                 Apache-2.0                https://github.com/psf/requests
+  argon2-cffi              MIT                       https://github.com/hynek/argon2-cffi
+  pyotp                    MIT                       https://github.com/pyauth/pyotp
+  segno                    BSD-3-Clause              https://github.com/heuer/segno
+  rich                     MIT                       https://github.com/Textualize/rich
+  Pillow                   MIT-CMU (HPND)            https://github.com/python-pillow/Pillow
+  pillow-heif              BSD-3-Clause (source)     https://github.com/bigcat88/pillow_heif
+  cryptography             Apache-2.0 OR BSD-3       https://github.com/pyca/cryptography
+  protobuf                 BSD-3-Clause              https://github.com/protocolbuffers/protobuf
+  srp, keyring, tinyhtml   MIT / Apache-2.0          (see each package)
+  fido2                    BSD-2-Clause (Yubico)     https://github.com/Yubico/python-fido2
+
+BUNDLED NATIVE LIBRARIES (HEIC support)
+=======================================
+The binary wheels of pillow-heif bundle the libraries below. They are used only to DECODE HEIC images.
+The Docker image therefore contains them, and their licences apply to them:
+
+  libheif      LGPL-3.0   https://github.com/strukturag/libheif   (version in the image: see `pillow_heif.libheif_version()`)
+  libde265     LGPL-3.0   https://github.com/strukturag/libde265
+  x265         GPL-2.0    https://github.com/Multicorewareinc/x265  (GPL-2.0-or-later according to its source headers)
+
+Source code of these components is available at the URLs above, at the version tags named in the pillow-heif
+release that requirements.txt pins. If you cannot obtain it from there, open an issue and the corresponding source
+will be supplied.
+
+HEVC / H.265 may be covered by patents in some jurisdictions. Whoever distributes or uses the image is responsible
+for any licence that applies to them.

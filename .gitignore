@@ -1,0 +1,15 @@
+# Runtime data and secrets: never commit
+data/
+drive/
+home/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

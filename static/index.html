@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>iCloud ⇄ NAS</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2d9cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="iCloud NAS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<div id="offline" class="banner hidden">Sin conexión con la app. Reintentando…</div>
+
+<main>
+  <nav class="topnav"><span class="muted small">iCloud ⇄ NAS</span>
+    <span><a href="/cuenta">Cuenta</a> · <button class="link" id="logout">Salir</button></span></nav>
+
+  <!-- Común a Archivos y Fotos: la sesión de Apple es una sola -->
+  <section class="card attention hidden" id="twofa">
+    <h2>Apple necesita tu código</h2>
+    <p id="twofa-hint">Introduce el código de verificación de 6 dígitos.</p>
+    <form id="twofa-form" class="twofa-form" autocomplete="off">
+      <input id="twofa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8"
+             pattern="[0-9]*" placeholder="······" aria-label="Código de verificación">
+      <button class="primary" type="submit" id="twofa-submit">Verificar</button>
+    </form>
+    <p class="form-msg" id="twofa-msg"></p>
+    <p class="muted small">¿No te ha llegado o ha caducado?
+      <button class="link" id="twofa-new">Pedir un código nuevo</button>
+      (el anterior deja de valer).</p>
+  </section>
+
+  <section class="card attention hidden" id="session">
+    <h2 id="session-title">Sesión de Apple</h2>
+    <p id="session-msg"></p>
+    <p class="muted small">Archivos y Fotos usan la misma sesión: las dos esperan hasta que vuelva.</p>
+    <div class="actions"><button class="primary" id="btn-relogin">Reconectar con Apple</button></div>
+  </section>
+
+  <nav class="tabs" id="tabs" role="tablist">
+    <button role="tab" data-tab="archivos">📁 Archivos<i class="tabdot" id="tabdot-archivos"></i></button>
+    <button role="tab" data-tab="fotos">🖼 Fotos<i class="tabdot" id="tabdot-fotos"></i></button>
+    <button role="tab" data-tab="icloud">☁️ Mi iCloud</button>
+  </nav>
+
+  <div class="tab" id="tab-archivos">
+  <header class="card status" id="status">
+    <p class="eyebrow">iCloud Drive ⇄ <span id="drive-dir"></span></p>
+    <div class="status-row">
+      <span class="dot" id="status-dot"></span>
+      <div>
+        <h1 id="status-title">Cargando…</h1>
+        <p class="muted" id="status-sub"></p>
+      </div>
+    </div>
+    <p class="status-detail" id="status-detail"></p>
+    <div class="chips" id="status-chips"></div>
+    <div class="actions">
+      <button class="primary" id="btn-run">Sincronizar ahora</button>
+      <button id="btn-dry">Simular</button>
+      <button class="danger hidden" id="btn-stop">Parar</button>
+    </div>
+  </header>
+
+  <section class="card attention danger-card hidden" id="pending">
+    <h2>Borrados pendientes de confirmar</h2>
+    <p id="pending-text"></p>
+    <p class="muted small">No se ha borrado nada todavía y el resto de la sincronización sigue con
+      normalidad. Decide carpeta por carpeta (despliega una para ver sus ficheros) o todo a la vez:</p>
+    <div id="pending-folders"></div>
+    <div class="actions">
+      <button class="danger" id="pending-confirm">Borrar todo</button>
+      <button id="pending-reject">Restaurar todo</button>
+    </div>
+  </section>
+
+  <section class="card hidden" id="progress">
+    <div class="progress-head">
+      <h2 id="progress-title">Sincronizando</h2>
+      <span class="muted small" id="progress-elapsed"></span>
+    </div>
+    <ol class="steps" id="steps"></ol>
+    <p class="progress-line" id="progress-line"></p>
+    <div id="transfer" class="hidden">
+      <div class="bar"><div id="bar-actions"></div></div>
+      <div class="bar-legend"><span id="legend-actions"></span><span id="legend-bytes"></span></div>
+      <div class="bar thin"><div id="bar-bytes"></div></div>
+      <div class="bar-legend"><span id="legend-speed"></span><span id="legend-eta"></span></div>
+      <div class="current" id="current"></div>
+      <div class="counters" id="counters"></div>
+    </div>
+  </section>
+
+  <section class="card attention hidden" id="conflicts-card">
+    <h2>Conflictos por revisar <span class="badge" id="conflicts-count"></span></h2>
+    <p class="muted small">El fichero cambió en el NAS y en iCloud a la vez. La versión de iCloud se
+      queda con el nombre original y la del NAS se guarda al lado como «(conflicto NAS …)». Revisa,
+      borra la que sobre y márcalo como revisado.</p>
+    <ul class="list" id="conflicts"></ul>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2>Actividad reciente</h2>
+      <div class="filters" id="filters">
+        <button data-f="all" class="on">Todo</button>
+        <button data-f="down">Descargas</button>
+        <button data-f="up">Subidas</button>
+        <button data-f="del">Borrados</button>
+        <button data-f="err">Errores</button>
+      </div>
+    </div>
+    <ul class="list feed" id="feed"></ul>
+    <p class="muted small empty" id="feed-empty">Aún no hay actividad desde que arrancó la app.</p>
+  </section>
+
+  <section class="card">
+    <h2>Historial</h2>
+    <ul class="list runs" id="runs"></ul>
+  </section>
+
+  <details class="card" id="log-details">
+    <summary><h2>Log</h2><span class="muted small" id="log-state"></span></summary>
+    <pre id="log"></pre>
+  </details>
+
+  <details class="card">
+    <summary><h2>Configuración de Archivos</h2></summary>
+    <dl class="config" id="config"></dl>
+    <p class="muted small">Se cambia en el entorno del contenedor (o en data/secrets.env para
+      contraseñas) y se aplica al redesplegar.</p>
+  </details>
+
+  </div>
+
+  <div class="tab hidden" id="tab-fotos">
+    <header class="card status" id="ph-status">
+      <p class="eyebrow">iCloud Fotos ⇄ <span id="ph-dir"></span></p>
+      <div class="status-row">
+        <span class="dot" id="ph-dot"></span>
+        <div>
+          <h1 id="ph-title">Cargando…</h1>
+          <p class="muted" id="ph-sub"></p>
+        </div>
+      </div>
+      <p class="status-detail" id="ph-detail"></p>
+      <div class="chips" id="ph-chips"></div>
+      <div class="actions">
+        <button class="primary" id="ph-run">Sincronizar ahora</button>
+        <button class="danger hidden" id="ph-stop">Parar</button>
+      </div>
+    </header>
+
+    <section class="card attention danger-card hidden" id="ph-pending">
+      <h2>Fotos borradas pendientes de confirmar</h2>
+      <p id="ph-pending-text"></p>
+      <p class="muted small">No se ha borrado nada todavía y el resto sigue con normalidad. Decide mes a mes
+        (despliega uno para ver sus fotos) o todo a la vez:</p>
+      <div id="ph-pending-folders"></div>
+      <div class="actions">
+        <button class="danger" id="ph-pending-confirm">Borrar todo</button>
+        <button id="ph-pending-reject">Restaurar todo</button>
+      </div>
+    </section>
+
+    <section class="card hidden" id="ph-progress">
+      <div class="progress-head">
+        <h2 id="ph-progress-title">Sincronizando</h2>
+        <span class="muted small" id="ph-elapsed"></span>
+      </div>
+      <ol class="steps" id="ph-steps"></ol>
+      <p class="progress-line" id="ph-line"></p>
+      <div id="ph-transfer" class="hidden">
+        <div class="bar"><div id="ph-bar"></div></div>
+        <div class="bar-legend"><span id="ph-legend-ops"></span><span id="ph-legend-bytes"></span></div>
+        <div class="current" id="ph-current"></div>
+        <div class="counters" id="ph-counters"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Historial</h2>
+      <ul class="list runs" id="ph-runs"></ul>
+    </section>
+
+    <details class="card">
+      <summary><h2>Cómo funciona</h2></summary>
+      <ul class="rules">
+        <li>Cada foto se guarda en <b>AAAA/MM</b> según su fecha, con el vídeo si es un Live Photo y, si la
+          editaste en el iPhone, la edición al lado como «(editada)».</li>
+        <li>Lo que dejes en <b id="ph-upload"></b> se sube a Fotos y, cuando iCloud lo tiene, pasa a su mes.</li>
+        <li>Tus álbumes (y Favoritas) están en <b>Álbumes/</b>, como en iCloud: son enlaces a las fotos de su mes,
+          no ocupan más. Las ocultas viven aparte, en su propia carpeta (la de «Configuración de Fotos»):
+          ocultar una en el iPhone la mueve ahí y mostrarla la devuelve a su mes.</li>
+        <li>Si borras una foto en el NAS, se borra en iCloud (va a Eliminados recientemente, 30 días). Si la
+          borras u ocultas en iCloud, va a la papelera del NAS. Más de <span id="ph-confirm"></span> a la vez
+          esperan tu confirmación aquí.</li>
+        <li>Borrar solo el vídeo o la edición no toca iCloud y no se vuelven a bajar.</li>
+        <li>Editar una foto en el NAS no se sube: Fotos no deja sustituir una foto.</li>
+        <li>Cada vuelta hace como mucho <span id="ph-limits"></span>; lo demás, en la siguiente. Si Apple
+          frena, se espera más.</li>
+      </ul>
+    </details>
+
+    <details class="card">
+      <summary><h2>Configuración de Fotos</h2></summary>
+      <dl class="config" id="ph-config"></dl>
+      <p class="muted small">Se cambia en el entorno del contenedor (variables PHOTOS_*) y se aplica
+        al redesplegar. Para forzar la simulación sin redesplegar: crear data/SIMULACION_FOTOS.</p>
+    </details>
+  </div>
+
+  <div class="tab hidden" id="tab-icloud">
+  <section class="card" id="icloud-card">
+    <div class="section-head">
+      <h2>Tu iCloud</h2>
+      <button class="small-btn" id="icloud-refresh" title="Volver a preguntar a Apple">↻ Actualizar</button>
+    </div>
+    <div id="storage">
+      <p class="muted small" id="storage-msg">Cargando el almacenamiento…</p>
+      <div class="hidden" id="storage-body">
+        <p class="storage-head"><b id="storage-used"></b> <span class="muted" id="storage-total"></span></p>
+        <div class="stack" id="storage-bar"></div>
+        <ul class="legend" id="storage-legend"></ul>
+      </div>
+    </div>
+    <h3>Dispositivos</h3>
+    <p class="muted small" id="devices-msg">Cargando dispositivos…</p>
+    <ul class="list devices" id="devices"></ul>
+  </section>
+
+  </div>
+
+  <footer class="muted small" id="footer"></footer>
+  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente · Source code (AGPL-3.0)</a></p>
+</main>
+
+<div id="toasts" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+<script src="/static/fotos.js"></script>
+</body>
+</html>

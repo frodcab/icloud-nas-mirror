@@ -1,0 +1,74 @@
+services:
+  icloud-nas-mirror:
+    image: ghcr.io/frodcab/icloud-nas-mirror:latest
+    container_name: icloud-nas-mirror
+    restart: unless-stopped
+    # Owner of the files written on your disk. Use the uid:gid that owns your folders (run `id` on the host).
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${WEB_PORT:-8096}:8080"
+    environment:
+      - TZ=${TZ:-UTC}
+      - HOME=/tmp
+      - ICLOUD_USERNAME=${ICLOUD_USERNAME:?Set ICLOUD_USERNAME in .env}
+      - ICLOUD_CHINA=${ICLOUD_CHINA:-false}
+      - GUI_USER=${GUI_USER:-admin}
+      - SESSION_IDLE_HOURS=${SESSION_IDLE_HOURS:-12}
+      - SESSION_MAX_DAYS=${SESSION_MAX_DAYS:-30}
+      - AUTH_ALLOW_NETWORKS=${AUTH_ALLOW_NETWORKS:-192.168.0.0/16}
+      - AUTH_DENY_NETWORKS=${AUTH_DENY_NETWORKS:-}
+      - AUTH_ONLY_NETWORKS=${AUTH_ONLY_NETWORKS:-}
+      # iCloud Drive <-> folder
+      - SYNC_FOLDERS=${SYNC_FOLDERS:-}
+      - EXCLUDES=${EXCLUDES:-}
+      - SYNC_INTERVAL_MIN=${SYNC_INTERVAL_MIN:-45}
+      - LIST_WORKERS=${LIST_WORKERS:-4}
+      - SYNC_APPS=${SYNC_APPS:-true}
+      - HEIC_TO_JPG=${HEIC_TO_JPG:-true}
+      - HEIC_FOLDERS=${HEIC_FOLDERS:-}
+      - HEIC_QUALITY=${HEIC_QUALITY:-95}
+      - DEVICES_FILTER=${DEVICES_FILTER:-}
+      # iCloud Photos <-> folder. Simulation ON by default: nothing is downloaded until you set it to false.
+      - SYNC_PHOTOS=${SYNC_PHOTOS:-true}
+      - PHOTOS_DRY_RUN=${PHOTOS_DRY_RUN:-true}
+      - PHOTOS_PROBE=${PHOTOS_PROBE:-true}
+      - PHOTOS_HIDDEN=${PHOTOS_HIDDEN:-true}
+      - PHOTOS_HIDDEN_DIR=${PHOTOS_HIDDEN_DIR:-}
+      - PHOTOS_INTERVAL_MIN=${PHOTOS_INTERVAL_MIN:-240}
+      - PHOTOS_MAX_DOWNLOADS=${PHOTOS_MAX_DOWNLOADS:-1000}
+      - PHOTOS_MAX_GB=${PHOTOS_MAX_GB:-10}
+      - PHOTOS_MAX_UPLOADS=${PHOTOS_MAX_UPLOADS:-200}
+      - PHOTOS_MAX_DELETES=${PHOTOS_MAX_DELETES:-200}
+      - PHOTOS_PAUSE_S=${PHOTOS_PAUSE_S:-0.5}
+      - PHOTOS_RANDOM_PAGES=${PHOTOS_RANDOM_PAGES:-4}
+      - PHOTOS_RANDOM_SHARE=${PHOTOS_RANDOM_SHARE:-0.3}
+      # Safeguards. DRY_RUN=true only logs what Drive sync would do: set it to false once the log looks right.
+      - CONFIRM_DELETES_OVER=${CONFIRM_DELETES_OVER:-5}
+      - MAX_DELETE=${MAX_DELETE:-100}
+      - TRASH_DAYS=${TRASH_DAYS:-30}
+      - DRY_RUN=${DRY_RUN:-true}
+      # Watchdog: stuck runs are stopped, you get an email, and the process restarts if it does not answer
+      - SYNC_STALL_MIN=${SYNC_STALL_MIN:-45}
+      - SYNC_RUN_MAX_MIN=${SYNC_RUN_MAX_MIN:-360}
+      - PHOTOS_STALL_MIN=${PHOTOS_STALL_MIN:-20}
+      - PHOTOS_RUN_MAX_MIN=${PHOTOS_RUN_MAX_MIN:-180}
+      - PHOTOS_FILE_MAX_MIN=${PHOTOS_FILE_MAX_MIN:-45}
+      - PHOTOS_KILL_GRACE_MIN=${PHOTOS_KILL_GRACE_MIN:-5}
+      # Optional e-mail notifications (the password goes in data/secrets.env, not here)
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - NOTIFY_EMAIL_TO=${NOTIFY_EMAIL_TO:-}
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:8096}
+    volumes:
+      # Sessions (Apple cookies), state, trash and secrets.env
+      - ${DATA_DIR:-./data}:/data
+      # The folder kept equal to iCloud Drive
+      - ${DRIVE_DIR:-./drive}:/data/drive
+      # Photos end up in $HOME_DIR/Photos/iCloud/YYYY/MM (hidden ones in PHOTOS_HIDDEN_DIR, if you set it)
+      - ${HOME_DIR:-./home}:/data/home
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "2"

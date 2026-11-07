@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Cuenta · iCloud sync</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2d9cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="iCloud NAS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<main>
+  <nav class="topnav"><a href="/">← Volver al panel</a><button class="link" id="logout">Salir</button></nav>
+
+  <section class="card">
+    <h1 id="who">Cuenta</h1>
+    <p class="muted small">Estás conectado desde <b id="your-ip"></b>.</p>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><h2>Sesiones abiertas</h2><button id="revoke-all">Cerrar las demás</button></div>
+    <ul class="list" id="sessions"></ul>
+  </section>
+
+  <section class="card">
+    <h2>IP bloqueadas</h2>
+    <p class="muted small">Se bloquean solas tras 5 fallos en 15 minutos (15 min, luego 1 h, 24 h y 7 días si
+      reinciden). Las de tu red de casa nunca se bloquean.</p>
+    <ul class="list" id="bans"></ul>
+    <form id="form-ban" class="inline">
+      <input id="ban-ip" placeholder="IP a bloquear" aria-label="IP a bloquear">
+      <button class="danger" type="submit">Bloquear</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Cambiar contraseña</h2>
+    <form id="form-password" class="vstack">
+      <label>Contraseña actual<input id="pw-current" type="password" autocomplete="current-password" required></label>
+      <label>Nueva (mínimo 12 caracteres)<input id="pw-new" type="password" autocomplete="new-password" minlength="12" required></label>
+      <label>Código de tu app<input id="pw-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+      <button class="primary" type="submit">Cambiar contraseña</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Segundo factor (app de autenticación)</h2>
+    <p class="small">¿Cambias de móvil o de app? Restablécelo aquí y escanea un QR nuevo. Si has perdido el
+      móvil, usa uno de tus códigos de recuperación en lugar del código de la app.</p>
+    <form id="form-reset-totp" class="vstack">
+      <label>Contraseña actual<input id="rt-password" type="password" autocomplete="current-password" required></label>
+      <label>Código de tu app o de recuperación<input id="rt-code" inputmode="text" autocomplete="one-time-code" maxlength="14" placeholder="123456" required></label>
+      <button class="danger" type="submit">Restablecer segundo factor</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Códigos de recuperación</h2>
+    <p class="small">Te quedan <b id="rec-left"></b> sin usar. Generar nuevos anula los anteriores.</p>
+    <form id="form-recovery" class="inline">
+      <input id="rec-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="Código de tu app" required>
+      <button type="submit">Generar nuevos</button>
+    </form>
+    <pre class="codes hidden" id="rec-codes"></pre>
+  </section>
+
+  <details class="card">
+    <summary><h2>Últimos intentos de acceso</h2></summary>
+    <ul class="list small" id="attempts"></ul>
+  </details>
+  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente · Source code (AGPL-3.0)</a></p>
+</main>
+<div id="toasts" aria-live="polite"></div>
+<script src="/static/cuenta.js"></script>
+</body>
+</html>
