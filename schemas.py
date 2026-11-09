@@ -18,6 +18,7 @@ class Health(BaseModel):
     last_run_status: str | None = None
     last_run_at: str | None = None
     photos: dict | None = None
+    auth_disabled: bool = False
 
 
 class MessageOut(BaseModel):

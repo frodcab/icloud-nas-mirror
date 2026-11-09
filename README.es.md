@@ -7,7 +7,7 @@
 **Sincronización bidireccional autoalojada entre iCloud Drive / iCloud Fotos y una carpeta de tu NAS o servidor**, con panel web, acceso con 2FA y límites de seguridad. Un único contenedor Docker, `amd64` y `arm64`.
 
 > **Estado: beta.** Lleva semanas funcionando con la cuenta del autor, pero depende de una interfaz que Apple no documenta ni soporta. Lee los [riesgos](#riesgos-léelos-primero) antes de usarlo.
-> El panel web está, por ahora, **solo en español**; el inglés está previsto (ver la hoja de ruta al final).
+> El panel web y los correos están en **español e inglés**: se cambia con **ES · EN** en la parte de arriba del panel (por defecto sigue el idioma del navegador) y `NOTIFY_LANG` fija el de los correos. Los logs están en inglés. Los nombres de las carpetas y ficheros que la app crea en el disco (`Álbumes/`, `Oculto/`, `Subir/`, `(editada)`, `(conflicto NAS …)`) se eligen con `NAMES_LANG` (`es` o `en`): elígelo **antes de la primera sincronización**, porque esos nombres se guardan en las bases de datos de estado.
 
 ## Qué hace
 
@@ -19,9 +19,9 @@
 - Las apps (Pages, Numbers, Keynote, Atajos…) se copian de iCloud al disco, solo en ese sentido.
 
 **iCloud Fotos ⇄ `Photos/iCloud/AAAA/MM/`** (en los dos sentidos)
-- Originales, versiones editadas (`… (editada)`), vídeos de Live Photo y tus álbumes (como enlaces duros en `Álbumes/<álbum>/`).
+- Originales, versiones editadas (`… (editada)`), vídeos de Live Photo y tus álbumes (como enlaces duros en `Álbumes/<álbum>/`; `Albums/` con `NAMES_LANG=en`).
 - Las fotos ocultas pueden ir a su propia carpeta, fuera de la biblioteca de tu gestor de fotos.
-- Lo que dejes en `Subir/` se sube a iCloud Fotos. Borrar una foto en el disco la borra en iCloud (con confirmación por encima del límite).
+- Lo que dejes en `Subir/` (`Upload/` con `NAMES_LANG=en`) se sube a iCloud Fotos. Borrar una foto en el disco la borra en iCloud (con confirmación por encima del límite).
 - Pensado para cuidar tu cuenta: límites por vuelta (descargas, GB, subidas, borrados), pausas entre transferencias, espera automática cuando Apple frena, y muestreo aleatorio para que unos pocos ficheros lentos no bloqueen al resto.
 
 **Funcionamiento**
@@ -89,6 +89,13 @@ Todo son variables de entorno; mira [`.env.example`](.env.example) y [`compose.y
 - `X-Forwarded-For` solo se acepta de la puerta de enlace del contenedor. Si lo expones fuera de tu red local, ponlo detrás de un proxy inverso con HTTPS.
 - Tu contraseña de Apple vive solo en `data/secrets.env` (permisos 600) y en memoria. Las cookies de sesión de Apple se guardan en `data/session/`. **Protege la carpeta `data/` como un gestor de contraseñas.**
 - Usa una `GUI_PASS` larga y única; luego puedes cambiarla desde el panel.
+- **Funcionar sin el acceso.** Si ya proteges el panel (una VPN como Tailscale/WireGuard, o un proxy inverso con su propia autenticación como
+  Authelia/Authentik), pon `AUTH_DISABLED=true`. Entonces no hay usuario, contraseña ni TOTP, ni página *Cuenta*. Viene **apagado por defecto** y es una
+  decisión con riesgo real: cualquiera que llegue al puerto puede confirmar borrados, meter tu código 2FA de Apple o hacer sonar tus dispositivos.
+  Siguen activas estas salvaguardas: solo se aceptan redes privadas (`10/8`, `172.16/12`, `192.168/16`, loopback, `100.64/10`) salvo que fijes
+  `AUTH_ONLY_NETWORKS` (o `AUTH_ALLOW_PUBLIC=true`, bajo tu responsabilidad); el anti-CSRF; y la cabecera `Host` debe ser una IP, un nombre local
+  (`nas`, `*.local`, `*.lan`) o uno que pongas en `AUTH_ALLOWED_HOSTS`/`PUBLIC_URL` (protección contra DNS rebinding). Detrás de un proxy que no esté
+  en `AUTH_TRUSTED_PROXIES` la app solo ve la dirección del proxy, así que la comprobación de red no te protege: hazlo en el proxy.
 - `/health` es público y no devuelve datos personales (versión, estado de la sesión, estado de la última vuelta).
 - Avisa de las vulnerabilidades como se explica en [SECURITY.md](SECURITY.md).
 
@@ -121,7 +128,7 @@ Se agradecen las incidencias y las sugerencias. Por ahora **no se aceptan pull r
 
 ## Hoja de ruta
 
-- Interfaz en español e inglés (hoy el panel solo está en español); más idiomas más adelante.
+- Más idiomas de interfaz (un idioma es un fichero `static/i18n-<código>.json`; las traducciones se agradecen como incidencias).
 - Capturas y un vídeo corto en este README.
 - Más pruebas con cuentas reales antes de cada versión.
 

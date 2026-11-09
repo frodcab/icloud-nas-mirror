@@ -30,9 +30,9 @@ class AccountInfoError(Exception):
 
 
 DEVICES_HELP = (
-    "Qué dispositivos aparecen en el panel (y se pueden hacer sonar). Pon \"mostrar\" a true o false. "
-    "Los dispositivos nuevos se añaden solos: con mostrar=true si su nombre contiene \"filtro_nombre\" "
-    "(sin distinguir mayúsculas; vacío = ninguno) y false si no. Se relee en cada consulta."
+    "Which devices appear in the panel (and can be made to ring). Set \"mostrar\" to true or false. "
+    "New devices are added automatically: with mostrar=true if their name contains \"filtro_nombre\" "
+    "(case-insensitive; empty = none) and false otherwise. It is re-read on every request."
 )
 
 
@@ -122,7 +122,7 @@ class AccountInfo:
             except AccountInfoError:
                 raise
             except Exception as exc:
-                log.warning("No se pudo leer el almacenamiento de iCloud: %s", exc)
+                log.warning("Could not read the iCloud storage: %s", exc)
                 raise AccountInfoError(f"Apple no ha devuelto el almacenamiento: {type(exc).__name__}: {exc}") from exc
             self._storage = (time.time(), data)
             return data
@@ -155,7 +155,7 @@ class AccountInfo:
             except AccountInfoError:
                 raise
             except Exception as exc:
-                log.warning("No se pudo leer la lista de dispositivos: %s", exc)
+                log.warning("Could not read the device list: %s", exc)
                 raise AccountInfoError(f"Apple no ha devuelto los dispositivos: {type(exc).__name__}: {exc}") from exc
             items = []
             self._device_objs = {}
@@ -197,7 +197,7 @@ class AccountInfo:
         try:
             dev.play_sound(subject=SOUND_SUBJECT)
         except Exception as exc:
-            log.warning("No se pudo hacer sonar %s: %s", dev.name, exc)
+            log.warning("Could not make %s ring: %s", dev.name, exc)
             raise AccountInfoError(f"Apple no ha aceptado la petición: {type(exc).__name__}: {exc}") from exc
         log.info("Sonido enviado a %s", dev.name)
         return dev.name

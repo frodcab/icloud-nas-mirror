@@ -189,9 +189,9 @@ class AppsMirror:
                     self.db.put(snap)
                     fixed += 1
             except (OSError, ValueError) as exc:
-                log.warning("No se pudo convertir %s a archivo único: %s", path, exc)
+                log.warning("Could not convert %s to a single file: %s", path, exc)
         if fixed:
-            log.info("Apps: %d documentos de Pages/Numbers/Keynote pasados a archivo único", fixed)
+            log.info("Apps: %d Pages/Numbers/Keynote documents converted to single files", fixed)
         self.db.set("package_format", "flat")
 
     # --- acciones -------------------------------------------------------------------------------

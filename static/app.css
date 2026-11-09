@@ -212,3 +212,8 @@ pre.codes { font-size: 1rem; line-height: 1.7; text-align: center; }
 .topnav a { color: var(--accent); text-decoration: none; }
 .list .ok { color: var(--ok); } .list .bad { color: var(--bad); }
 code { overflow-wrap: anywhere; }
+
+/* Selector de idioma (i18n.js) */
+.langbar { text-align: right; margin: 0 0 .4rem; }
+#lang-switch b { color: var(--text, inherit); }
+#lang-switch button.link { padding: 0; }

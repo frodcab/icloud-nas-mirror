@@ -22,3 +22,5 @@ Only the latest release receives fixes.
 - If you expose the panel beyond your LAN, put it behind a reverse proxy with HTTPS and restrict
   `AUTH_ONLY_NETWORKS` where you can.
 - Keep the image up to date (`docker compose pull`).
+- Only set `AUTH_DISABLED=true` if access to the panel is already restricted by something else (VPN, authenticating reverse proxy, firewall).
+  Without a login anyone who can reach the port can act on your iCloud sync. Never combine it with `AUTH_ALLOW_PUBLIC=true` on an exposed port.

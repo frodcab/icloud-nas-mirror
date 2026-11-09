@@ -48,6 +48,25 @@ def default_gateway(route_file: str = "/proc/net/route") -> str | None:
     return None
 
 
+# Redes que cuentan como "locales" para el modo sin login. Lista explícita a propósito: `ipaddress.is_private` de Python
+# incluye también rangos de documentación y reservados que no son una red local.
+_PRIVATE = _networks([
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16",
+    "100.64.0.0/10",                                 # CGNAT: Tailscale y similares
+    "::1/128", "fc00::/7", "fe80::/10"])
+
+
+def is_private_ip(ip: str) -> bool:
+    """Red local, loopback, link-local o CGNAT (VPN tipo Tailscale). Una IP que no se entiende no cuenta como privada."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
+        addr = addr.ipv4_mapped
+    return _in(str(addr), _PRIVATE)
+
+
 class IPPolicy:
     def __init__(self, trusted_proxies, allow, deny=(), only=()):
         self.trusted = _networks(trusted_proxies)

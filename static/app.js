@@ -46,13 +46,13 @@ const COUNTER_ORDER = [
 // --- utilidades ----------------------------------------------------------------------------------
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const nf = new Intl.NumberFormat("es-ES");
+const nf = new Intl.NumberFormat(i18n.locale);
 
 function fmtBytes(b) {
   if (!b) return "0 B";
   const u = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.min(u.length - 1, Math.floor(Math.log(b) / Math.log(1024)));
-  return `${(b / 1024 ** i).toLocaleString("es-ES", { maximumFractionDigits: i ? 1 : 0 })} ${u[i]}`;
+  return `${(b / 1024 ** i).toLocaleString(i18n.locale, { maximumFractionDigits: i ? 1 : 0 })} ${u[i]}`;
 }
 function fmtDuration(s) {
   if (s == null) return "";
@@ -64,7 +64,7 @@ function fmtDuration(s) {
 function toDate(v) { return v == null ? null : typeof v === "number" ? new Date(v * 1000) : new Date(v); }
 function fmtAbs(v) {
   const d = toDate(v);
-  return d ? d.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" }) : "";
+  return d ? d.toLocaleString(i18n.locale, { dateStyle: "short", timeStyle: "short" }) : "";
 }
 function fmtRel(v) {
   const d = toDate(v);
@@ -288,7 +288,7 @@ function renderProgress() {
   $("bar-actions").style.width = pa + "%";
   $("bar-bytes").style.width = pb + "%";
   $("legend-actions").textContent = `${nf.format(P.actions_done)} de ${nf.format(P.actions_total)} operaciones`;
-  $("legend-bytes").textContent = P.bytes_total ? `${fmtBytes(P.bytes_done)} de ${fmtBytes(P.bytes_total)}` : "";
+  $("legend-bytes").textContent = P.bytes_total ? `${_t("{a} de {b}", { a: fmtBytes(P.bytes_done), b: fmtBytes(P.bytes_total) })}` : "";
   $("legend-speed").textContent = P.speed_bps ? `${fmtBytes(P.speed_bps)}/s` : "";
   $("legend-eta").textContent = P.eta_s != null ? `quedan ~${fmtDuration(P.eta_s)}` : "";
 
@@ -315,7 +315,7 @@ function renderFeed() {
     : feedFilter === "err" ? !a.ok : a.ok && (ACTIONS[a.kind]?.group === feedFilter));
   $("feed").innerHTML = items.slice().reverse().slice(0, 200).map(a => {
     const d = ACTIONS[a.kind] || { icon: "•", done: a.kind };
-    const meta = [d.done, a.size ? fmtBytes(a.size) : "", new Date(a.ts * 1000).toLocaleTimeString("es-ES")]
+    const meta = [d.done, a.size ? fmtBytes(a.size) : "", new Date(a.ts * 1000).toLocaleTimeString(i18n.locale)]
       .filter(Boolean).join(" · ");
     return `<li class="${a.ok ? "" : "err"}"><span class="icon">${a.ok ? d.icon : "✕"}</span>
       <div class="what"><div class="path">${pathHtml(a.path)}</div><div class="meta">${esc(meta)}</div>
@@ -382,6 +382,7 @@ function renderConfig() {
     ["Se ignoran", c.excludes.join("  ")],
   ];
   $("config").innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  $("conflict-label").textContent = `(${c.conflict_name || "conflicto NAS"} …)`;
   $("footer").textContent = `app-integration-icloud-sync · versión ${S.version}`;
   $("drive-dir").textContent = c.sync_dir;
 }
@@ -424,7 +425,7 @@ async function decideGroup(idx, decision) {
   const msg = decision === "confirm"
     ? `¿Borrar ${g.count} fichero(s) de «${g.folder || "/"}» también ${where}?`
     : `¿Restaurar ${g.count} fichero(s) de «${g.folder || "/"}»? Se volverán a traer desde el otro lado.`;
-  if (!confirm(msg)) return;
+  if (!i18n.confirm(msg)) return;
   try {
     const r = await post(`/api/pending-deletes/${pendingBatch}/decide`, { folder: g.folder, side: g.side, decision });
     toast(r.message, !r.ok);
@@ -438,7 +439,7 @@ async function decidePending(decision) {
   const msg = decision === "confirm"
     ? "¿Borrar TODO el lote? Lo borrado en el NAS se borrará también en iCloud (a Eliminados recientemente, recuperable 30 días) y lo borrado en iCloud irá a la papelera del NAS."
     : "¿Restaurar TODO el lote? Se volverán a traer todos esos ficheros desde el lado donde siguen existiendo.";
-  if (!confirm(msg)) return;
+  if (!i18n.confirm(msg)) return;
   for (const id of ["pending-confirm", "pending-reject"]) $(id).disabled = true;
   try {
     const r = await post(`/api/pending-deletes/${pendingBatch}/${decision}`);
@@ -459,7 +460,7 @@ async function loadStorage(refresh = false) {
     $("storage-msg").classList.add("hidden");
     $("storage-body").classList.remove("hidden");
     $("storage-used").textContent = `${fmtBytes(st.used_bytes)} usados`;
-    $("storage-total").textContent = `de ${fmtBytes(st.total_bytes)} · quedan ${fmtBytes(st.available_bytes)} (${st.used_percent.toLocaleString("es-ES")} % usado)`;
+    $("storage-total").textContent = `de ${fmtBytes(st.total_bytes)} · quedan ${fmtBytes(st.available_bytes)} (${st.used_percent.toLocaleString(i18n.locale)} % usado)`;
     const total = st.total_bytes || 1;
     $("storage-bar").className = "stack" + (st.over_quota || st.used_percent >= 95 ? " full" : "");
     $("storage-bar").innerHTML = st.by_media.filter(m => m.bytes > 0).map(m =>
@@ -584,7 +585,7 @@ async function runNow(dry) {
 $("btn-run").onclick = () => runNow(false);
 $("btn-dry").onclick = () => runNow(true);
 $("btn-stop").onclick = async () => {
-  if (!confirm("¿Parar la sincronización al terminar el fichero actual? La próxima continuará donde se quede.")) return;
+  if (!i18n.confirm("¿Parar la sincronización al terminar el fichero actual? La próxima continuará donde se quede.")) return;
   try { const r = await post("/api/sync/stop"); toast(r.message, !r.ok); } catch (e) { toast(e.message, true); }
   kickProgress();
 };
@@ -599,6 +600,10 @@ $("pending-reject").onclick = () => decidePending("reject");
 $("tabs").onclick = e => { const b = e.target.closest("button[data-tab]"); if (b) showTab(b.dataset.tab); };
 showTab(currentTab);
 $("logout").onclick = async () => { await post("/auth/logout").catch(() => {}); location.replace("/login"); };
+// Panel sin login (AUTH_DISABLED): sin enlaces de cuenta y con un aviso fijo
+fetch("/auth/state").then(r => r.json()).then(s => {
+  if (s.auth_disabled) { $("account-nav").classList.add("hidden"); $("auth-banner").classList.remove("hidden"); }
+}).catch(() => {});
 $("btn-relogin").onclick = async () => {
   try { const r = await post("/api/auth/relogin"); toast(r.message, !r.ok); } catch (e) { toast(e.message, true); }
   kickProgress(); kickStatus();
@@ -612,7 +617,7 @@ $("icloud-refresh").onclick = async () => {
 $("devices").onclick = async e => {
   const btn = e.target.closest("button[data-sound]");
   if (!btn) return;
-  if (!confirm(`¿Hacer sonar «${btn.dataset.name}»? Sonará a todo volumen aunque esté en silencio, y Apple te enviará un email de aviso.`)) return;
+  if (!i18n.confirm(`¿Hacer sonar «${btn.dataset.name}»? Sonará a todo volumen aunque esté en silencio, y Apple te enviará un email de aviso.`)) return;
   btn.disabled = true; const label = btn.textContent; btn.textContent = "Enviando…";
   try { const r = await post("/api/devices/play-sound", { device_id: btn.dataset.sound }); toast(r.message, !r.ok); }
   catch (err) { toast(err.message, true); }

@@ -10,6 +10,7 @@ Uso en una app:
 
 import hashlib
 import hmac
+import ipaddress
 import logging
 import math
 import secrets
@@ -23,7 +24,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Red
 from .passwords import hash_password, needs_rehash, verify_password
 from .secretbox import SecretBox
 from .store import AuthStore
-from .throttle import IPPolicy, default_gateway, register_failure, user_delay
+from .throttle import IPPolicy, default_gateway, is_private_ip, register_failure, user_delay
 from .totp import new_secret, provisioning_uri, qr_svg, verify
 from .users import UsersFileError, UserStore
 
@@ -48,6 +49,17 @@ SECURITY_HEADERS = {
 }
 
 
+LOCAL_USER = "local"          # usuario único cuando el panel va sin login (AUTH_DISABLED)
+
+
+def _host_name(value: str) -> str:
+    """Nombre de host de una cabecera Host (sin puerto ni corchetes de IPv6), en minúsculas."""
+    value = value.strip().lower()
+    if value.startswith("["):
+        return value[1:].split("]")[0]
+    return value.rsplit(":", 1)[0] if value.count(":") == 1 else value
+
+
 def _plain_403(message: str) -> PlainTextResponse:
     r = PlainTextResponse(message, status_code=403)
     for k, v in SECURITY_HEADERS.items():
@@ -61,7 +73,8 @@ class WebAuth:
                  trusted_proxies=None,
                  allow_networks=("192.168.0.0/16",), deny_networks=(), only_networks=(),
                  public_paths=(), session_idle_hours: float = 12, session_max_days: float = 30,
-                 public_url: str = "", send_email=None, clock=time.time):
+                 public_url: str = "", send_email=None, clock=time.time,
+                 disabled: bool = False, allow_public: bool = False, allowed_hosts=()):
         self.users = UserStore(users_file, SecretBox(secret_key, "totp"))
         self.pending_box = SecretBox(secret_key, "totp-pending")
         self.store = AuthStore(db_path, clock=clock)
@@ -80,6 +93,13 @@ class WebAuth:
         self.idle = session_idle_hours * 3600
         self.max_age = session_max_days * 86400
         self.public_host = urlparse(public_url).netloc if public_url else ""
+        # Panel SIN login (AUTH_DISABLED): para quien ya lo protege con su VPN o su proxy. Solo redes privadas salvo
+        # que se pida lo contrario, y el anti-CSRF y la comprobación de Host siguen activos.
+        self.disabled = disabled
+        self.allow_public = allow_public
+        self.allowed_hosts = {h.strip().lower() for h in allowed_hosts if h.strip()}
+        if self.public_host:
+            self.allowed_hosts.add(self.public_host.split(":")[0].lower())
         self.clock = clock
         self.router = self._build_router()
 
@@ -101,6 +121,10 @@ class WebAuth:
         denied = self.policy.denied(ip)
         if denied:
             return _plain_403(f"Acceso denegado: {denied}")
+        if self.disabled:
+            blocked = self._disabled_gate(request, peer, ip)
+            if blocked is not None:
+                return blocked
         until = self.store.ban_until(ip)
         if until and not self.policy.allowlisted(ip):
             return _plain_403("IP bloqueada temporalmente por intentos fallidos hasta "
@@ -114,6 +138,33 @@ class WebAuth:
         if request.state.https:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         return response
+
+    def _disabled_gate(self, request: Request, peer: str, ip: str):
+        """Con el login retirado: red de origen, Host (anti DNS rebinding) y rutas de cuenta cerradas."""
+        if not self.allow_public and not self.policy.only and not is_private_ip(ip):
+            log.warning("Access without authentication rejected from a public IP (%s)", ip)
+            return _plain_403("Sin autenticación solo se acepta desde redes privadas. Pon AUTH_ONLY_NETWORKS con las "
+                              "redes que quieres permitir (o AUTH_ALLOW_PUBLIC=true bajo tu responsabilidad).")
+        fwd = request.headers.get("x-forwarded-host") if self.policy.is_trusted(peer) else None
+        host = _host_name(fwd or request.headers.get("host", ""))
+        if not self._host_ok(host):
+            return _plain_403(f"Host no permitido: «{host}». Añádelo a AUTH_ALLOWED_HOSTS o pon PUBLIC_URL con ese "
+                              "nombre (protección contra DNS rebinding).")
+        path = request.url.path
+        if path in ("/login", "/cuenta"):
+            return RedirectResponse("/", status_code=302)
+        if path.startswith("/auth/") and path != "/auth/state":
+            return JSONResponse({"message": "La autenticación está desactivada (AUTH_DISABLED)."}, 404)
+        return None
+
+    def _host_ok(self, host: str) -> bool:
+        if not host or host == "localhost" or "." not in host or host in self.allowed_hosts:
+            return True
+        try:
+            ipaddress.ip_address(host)
+            return True
+        except ValueError:
+            return host.endswith((".local", ".lan", ".home.arpa", ".internal", ".localdomain"))
 
     def _same_origin(self, request: Request) -> bool:
         """Anti-CSRF: la petición debe venir de esta misma web (Origin/Referer) y por fetch del panel."""
@@ -153,11 +204,15 @@ class WebAuth:
             response.delete_cookie(name, path="/")
 
     def current_user(self, request: Request) -> str | None:
+        if self.disabled:
+            return LOCAL_USER
         s = self._session(request)
         return s["user"] if s and s["mfa"] else None
 
     def require_user(self, request: Request) -> str:
         """Dependencia de FastAPI: sesión con contraseña y TOTP validados."""
+        if self.disabled:
+            return LOCAL_USER
         s = self._session(request)
         if s and s["mfa"]:
             request.state.session = s
@@ -195,6 +250,9 @@ class WebAuth:
 
         @r.get("/auth/state")
         def state(request: Request):
+            if auth.disabled:
+                return {"app": auth.app_name, "user": LOCAL_USER, "mfa": True, "needs_totp_setup": False,
+                        "auth_disabled": True}
             s = auth._session(request)
             try:
                 needs_setup = bool(s) and not auth.users.totp_secret(s["user"])

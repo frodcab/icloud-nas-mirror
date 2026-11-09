@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from core import config
+from core import config, names
 from schemas import DeviceRef, Health, MessageOut, TwoFactorCode
 from core.webauth import WebAuth
 from services.account_info import AccountInfo, AccountInfoError, DevicesConfig
@@ -46,11 +46,12 @@ logging.getLogger("uvicorn.access").addFilter(_QuietPolling())
 
 STATIC = Path(__file__).parent / "static"
 STATIC_FILES = {"app.css": "text/css", "app.js": "text/javascript", "fotos.js": "text/javascript",
-                "login.js": "text/javascript",
+                "login.js": "text/javascript", "i18n.js": "text/javascript", "i18n-core.js": "text/javascript",
+                "i18n-en.json": "application/json",
                 "cuenta.js": "text/javascript", "icon.svg": "image/svg+xml", "icon-32.png": "image/png",
                 "icon-192.png": "image/png", "icon-512.png": "image/png", "apple-touch-icon.png": "image/png"}
 ICONS = {"icon.svg", "icon-32.png", "icon-192.png", "icon-512.png", "apple-touch-icon.png"}
-PUBLIC_STATIC = {"app.css", "login.js"} | ICONS   # lo que necesita la página de login antes de entrar
+PUBLIC_STATIC = {"app.css", "login.js", "i18n.js", "i18n-core.js", "i18n-en.json"} | ICONS   # lo que necesita la página de login antes de entrar
 MANIFEST = {
     "name": "iCloud ⇄ NAS", "short_name": "iCloud NAS", "start_url": "/", "scope": "/",
     "display": "standalone", "background_color": "#000000", "theme_color": "#2d9cff", "lang": "es",
@@ -75,7 +76,7 @@ heic = HeicToJpg(ConversionDB(config.STATE_DIR / "heic.db"), config.SYNC_DIR, co
                  config.HEIC_FOLDERS or config.SYNC_FOLDERS, config.HEIC_QUALITY,
                  progress=progress) if config.HEIC_TO_JPG else None
 notifier = EmailNotifier(config.SMTP_HOST, config.SMTP_PORT, config.SMTP_USERNAME,
-                         config.SMTP_PASSWORD, config.NOTIFY_EMAIL_TO)
+                         config.SMTP_PASSWORD, config.NOTIFY_EMAIL_TO, config.NOTIFY_LANG)
 service = SyncService(
     db=db, auth=auth, engine=engine, local=local, notifier=notifier,
     interval_min=config.SYNC_INTERVAL_MIN, dry_run=config.DRY_RUN, trash_days=config.TRASH_DAYS,
@@ -95,7 +96,7 @@ def _photos_service() -> PhotosSyncService | None:
         try:
             d.mkdir(parents=True, exist_ok=True)   # con el usuario de la app, dentro del home montado
         except OSError as exc:
-            logging.getLogger(__name__).error("No se puede crear %s (%s): ¿está montado el home (HOME_DIR)?", d, exc)
+            logging.getLogger(__name__).error("Cannot create %s (%s): is the home (HOME_DIR) mounted?", d, exc)
     pdb = PhotosDB(config.STATE_DIR / "photos.db")
     limits = PhotosLimits(max_downloads=config.PHOTOS_MAX_DOWNLOADS, max_bytes=int(config.PHOTOS_MAX_GB * 2**30),
                           max_uploads=config.PHOTOS_MAX_UPLOADS, max_deletes=config.PHOTOS_MAX_DELETES,
@@ -148,13 +149,19 @@ webauth = WebAuth(
     only_networks=config.AUTH_ONLY_NETWORKS, session_idle_hours=config.SESSION_IDLE_HOURS,
     session_max_days=config.SESSION_MAX_DAYS, public_url=config.PUBLIC_URL,
     send_email=notifier.send if notifier.enabled else None,
+    disabled=config.AUTH_DISABLED, allow_public=config.AUTH_ALLOW_PUBLIC, allowed_hosts=config.AUTH_ALLOWED_HOSTS,
 )
 webauth.install(app)
-if webauth.users.bootstrap(config.GUI_USER, config.GUI_PASS):
-    logging.getLogger(__name__).info("Creado %s con el usuario '%s' (solo el hash)", config.USERS_FILE, config.GUI_USER)
+if config.AUTH_DISABLED:
+    logging.getLogger(__name__).warning(
+        "AUTH_DISABLED=true: the panel does NOT ask for a user or password. %s Protect it with your VPN or your proxy.",
+        "It accepts any IP (AUTH_ALLOW_PUBLIC)." if config.AUTH_ALLOW_PUBLIC else
+        "It only accepts private networks" + (" and AUTH_ONLY_NETWORKS." if config.AUTH_ONLY_NETWORKS else "."))
+elif webauth.users.bootstrap(config.GUI_USER, config.GUI_PASS):
+    logging.getLogger(__name__).info("Created %s with the user '%s' (hash only)", config.USERS_FILE, config.GUI_USER)
 elif not webauth.users.exists():
-    logging.getLogger(__name__).error("No hay %s ni GUI_PASS: nadie puede entrar al panel. Crea un usuario con "
-                                      "python -m core.webauth usuario-nuevo <nombre>", config.USERS_FILE)
+    logging.getLogger(__name__).error("There is no %s and no GUI_PASS: nobody can sign in to the panel. Create a user with "
+                                      "python -m core.webauth new-user <name>", config.USERS_FILE)
 require_user = webauth.require_user
 
 
@@ -169,6 +176,7 @@ def health():
         auth_state=auth.state,
         last_run_status=last[0]["status"] if last else None,
         last_run_at=last[0]["finished_at"] if last else None,
+        auth_disabled=config.AUTH_DISABLED,
         photos=_photos_health(),
     )
 
@@ -236,6 +244,7 @@ def status():
             "max_delete": config.MAX_DELETE,
             "confirm_deletes_over": config.CONFIRM_DELETES_OVER,
             "trash_days": config.TRASH_DAYS,
+            "conflict_name": names.CONFLICT,
             "email_notifications": notifier.enabled,
             "email_to": config.NOTIFY_EMAIL_TO if notifier.enabled else "",
             "icloud_user": config.ICLOUD_USERNAME,
@@ -402,8 +411,9 @@ def photos_status():
     p = _photos()
     return {**p.status(), "progress": photos_progress.snapshot(), "runs": p.db.recent_runs(10),
             "config": {"dir": str(config.PHOTOS_DIR), "upload_dir": config.PHOTOS_UPLOAD_DIR,
+                       "albums_dir": names.ALBUMS_DIR, "edited_name": names.EDITED_SUFFIX.strip(),
                        "hidden": config.PHOTOS_HIDDEN,
-                       "hidden_dir": str(config.PHOTOS_HIDDEN_DIR or config.PHOTOS_DIR / "Álbumes" / "Oculto"),
+                       "hidden_dir": str(config.PHOTOS_HIDDEN_DIR or config.PHOTOS_DIR / names.ALBUMS_DIR / names.HIDDEN_NAME),
                        "interval_min": config.PHOTOS_INTERVAL_MIN, "max_downloads": config.PHOTOS_MAX_DOWNLOADS,
                        "max_gb": config.PHOTOS_MAX_GB, "max_uploads": config.PHOTOS_MAX_UPLOADS,
                        "max_deletes": config.PHOTOS_MAX_DELETES, "confirm_deletes_over": config.CONFIRM_DELETES_OVER}}

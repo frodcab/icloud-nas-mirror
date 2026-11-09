@@ -171,6 +171,24 @@ def test_conflict_keeps_both_versions(env):
     assert make().run().counts == {}
 
 
+def test_conflict_copy_uses_the_names_language(env):
+    """NAMES_LANG=en: la copia del NAS sale como «(NAS conflict …)» y todo el ciclo (subida incluida) sigue igual."""
+    from core import names
+    root, remote, db, make, _ = env
+    names.load("en")
+    try:
+        write(root, "doc.txt", b"base")
+        make().run()
+        bump(root, "doc.txt", b"nas")
+        remote.put("doc.txt", b"icloud")
+        assert make().run().counts == {"conflict": 1}
+        copies = [p for p in os.listdir(root) if "NAS conflict" in p]
+        assert len(copies) == 1 and "conflicto" not in copies[0] and (root / copies[0]).read_bytes() == b"nas"
+        assert remote.read(copies[0]) == b"nas"
+    finally:
+        names.load("es")
+
+
 def test_new_on_both_sides_same_content_is_adopted(env):
     root, remote, db, make, _ = env
     write(root, "x.bin", b"abc", mtime=1_700_000_000)

@@ -19,14 +19,14 @@ import re
 import shutil
 import time
 from datetime import datetime
+from core import names
 
 from services.photos_remote import RemoteAsset
 
 log = logging.getLogger(__name__)
 
-ALBUMS_DIR = "Álbumes"
-HIDDEN_DIR = f"{ALBUMS_DIR}/Oculto"   # ocultas, si no se configura otra carpeta (PHOTOS_HIDDEN_DIR)
-EXTERNAL_HIDDEN = "@oculto"            # prefijo en photos.db de la carpeta de ocultas fuera de Fotos
+EXTERNAL_HIDDEN = names.EXTERNAL_HIDDEN   # prefijo en photos.db de la carpeta de ocultas fuera de Fotos
+# Los nombres de carpeta (Álbumes, Oculto, Sin nombre…) vienen de core/names.py (NAMES_LANG) y se leen al usarlos
 ALBUMS_EVERY_S = 24 * 3600        # leer todos los álbumes cuesta ~20 min (solo Oculto, ~28.000 fotos)
 _BAD = re.compile(r'[\x00-\x1f\\:*?"<>|]+')
 
@@ -66,9 +66,9 @@ class AlbumsMirror:
             if kind == "hidden":
                 hidden_assets = assets
                 continue
-            folder = "/".join(_clean(p) for p in path) or "Sin nombre"
-            memberships.setdefault(f"{ALBUMS_DIR}/{folder}", []).extend(a.id for a in assets)
-        log.info("Fotos: %d álbumes y %d fotos ocultas en iCloud", len(memberships), len(hidden_assets))
+            folder = "/".join(_clean(p) for p in path) or names.UNNAMED
+            memberships.setdefault(f"{names.ALBUMS_DIR}/{folder}", []).extend(a.id for a in assets)
+        log.info("Photos: %d albums and %d hidden photos in iCloud", len(memberships), len(hidden_assets))
 
         # Oculto: lo que ya está en el NAS se mueve; lo que falta lo baja cada vuelta (engine._hidden_downloads,
         # pidiéndolas por id: aquí las URL ya habrían caducado). Con PHOTOS_HIDDEN desactivado solo se apuntan
@@ -98,7 +98,7 @@ class AlbumsMirror:
     def unhide(self, aid: str, known) -> None:
         """La foto ya no está oculta: vuelve a su AAAA/MM (la fecha del fichero es la de la foto)."""
         for pf in [f for f in known.values() if f.asset_id == aid and not f.dismissed]:
-            if not (self.e.is_hidden_path(pf.path) or pf.path.startswith(HIDDEN_DIR + "/")):
+            if not (self.e.is_hidden_path(pf.path) or pf.path.startswith(names.HIDDEN_DIR + "/")):
                 continue
             try:
                 mtime = self.e.abs(pf.path).stat().st_mtime
@@ -149,11 +149,11 @@ class AlbumsMirror:
         if e._dry:
             return
         memberships: dict[str, list[str]] = json.loads(e.db.get("albums_json") or "{}")
-        if f"{ALBUMS_DIR}/" in memberships:      # guardado antes del arreglo del álbum sin nombre
-            memberships[f"{ALBUMS_DIR}/Sin nombre"] = memberships.pop(f"{ALBUMS_DIR}/")
+        if f"{names.ALBUMS_DIR}/" in memberships:      # guardado antes del arreglo del álbum sin nombre
+            memberships[f"{names.ALBUMS_DIR}/{names.UNNAMED}"] = memberships.pop(f"{names.ALBUMS_DIR}/")
         by_asset: dict[str, list] = {}
         for pf in e.db.files().values():
-            if not pf.dismissed and not self.e.is_hidden_path(pf.path) and not pf.path.startswith(HIDDEN_DIR + "/"):
+            if not pf.dismissed and not self.e.is_hidden_path(pf.path) and not pf.path.startswith(names.HIDDEN_DIR + "/"):
                 by_asset.setdefault(pf.asset_id, []).append(pf)
         hidden = self.hidden_ids
         desired: dict[str, str] = {}
@@ -184,7 +184,7 @@ class AlbumsMirror:
                 made += 1
         self._prune_empty_dirs()
         if made or removed:
-            log.info("Fotos: álbumes al día (%d enlaces nuevos, %d quitados)", made, removed)
+            log.info("Photos: albums up to date (%d new links, %d removed)", made, removed)
             e._count("enlaces_album", made)
 
     def _link(self, src: str, link: str) -> bool:
@@ -199,12 +199,12 @@ class AlbumsMirror:
                     e.db.add_album_link(link, src)
                     return False
                 if link not in e.db.album_links():
-                    log.warning("Fotos: %s ya existe y no es un enlace de la app; se deja", link)
+                    log.warning("Photos: %s already exists and is not an app link; it is left alone", link)
                     return False
                 path.unlink()
             os.link(target, path)
         except OSError as exc:
-            log.warning("Fotos: no se pudo enlazar %s → %s (%s)", link, src, exc)
+            log.warning("Photos: could not link %s → %s (%s)", link, src, exc)
             return False
         e.db.add_album_link(link, src)
         return True
@@ -214,17 +214,17 @@ class AlbumsMirror:
         try:
             (e.root / link).unlink(missing_ok=True)
         except OSError as exc:
-            log.warning("Fotos: no se pudo quitar el enlace %s (%s)", link, exc)
+            log.warning("Photos: could not remove the link %s (%s)", link, exc)
             return
         e.db.drop_album_link(link)
 
     def _prune_empty_dirs(self) -> None:
         """Quita las carpetas de álbum que se han quedado vacías (solo rmdir: nunca borra ficheros)."""
-        base = self.e.root / ALBUMS_DIR
+        base = self.e.root / names.ALBUMS_DIR
         if not base.is_dir():
             return
         for dirpath, _dirs, _files in sorted(os.walk(base), key=lambda t: -len(t[0])):
-            if os.path.relpath(dirpath, self.e.root) in (ALBUMS_DIR, HIDDEN_DIR):
+            if os.path.relpath(dirpath, self.e.root) in (names.ALBUMS_DIR, names.HIDDEN_DIR):
                 continue
             try:
                 os.rmdir(dirpath)

@@ -18,6 +18,10 @@ services:
       - AUTH_ALLOW_NETWORKS=${AUTH_ALLOW_NETWORKS:-192.168.0.0/16}
       - AUTH_DENY_NETWORKS=${AUTH_DENY_NETWORKS:-}
       - AUTH_ONLY_NETWORKS=${AUTH_ONLY_NETWORKS:-}
+      # Panel WITHOUT login: only if you already protect it (VPN, or a reverse proxy with its own authentication)
+      - AUTH_DISABLED=${AUTH_DISABLED:-false}
+      - AUTH_ALLOW_PUBLIC=${AUTH_ALLOW_PUBLIC:-false}
+      - AUTH_ALLOWED_HOSTS=${AUTH_ALLOWED_HOSTS:-}
       # iCloud Drive <-> folder
       - SYNC_FOLDERS=${SYNC_FOLDERS:-}
       - EXCLUDES=${EXCLUDES:-}
@@ -55,6 +59,10 @@ services:
       - PHOTOS_FILE_MAX_MIN=${PHOTOS_FILE_MAX_MIN:-45}
       - PHOTOS_KILL_GRACE_MIN=${PHOTOS_KILL_GRACE_MIN:-5}
       # Optional e-mail notifications (the password goes in data/secrets.env, not here)
+      - NOTIFY_LANG=${NOTIFY_LANG:-en}
+      # Language of the folder/file names the app creates on disk (Albums/Hidden/Upload/(edited)/(NAS conflict …) or the Spanish ones).
+      # Choose it BEFORE the first sync: those names are stored in the state databases.
+      - NAMES_LANG=${NAMES_LANG:-en}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME:-}

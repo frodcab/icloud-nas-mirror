@@ -114,7 +114,7 @@ class SyncService(WatchdogMixin):
             try:
                 self.run_once(dry_run)
             except Exception:
-                log.exception("Error inesperado en el bucle de sync")
+                log.exception("Unexpected error in the sync loop")
             self.next_run_at = time.time() + (0 if getattr(self, "_rerun", False) else self.interval_s)
             self._rerun = False
 
@@ -146,17 +146,17 @@ class SyncService(WatchdogMixin):
         try:
             self.log_path.write_text("\n".join(capture.lines) + "\n", encoding="utf-8")
         except OSError:
-            log.warning("No se pudo guardar %s", self.log_path)
+            log.warning("Could not save %s", self.log_path)
         self._notify_result(result)
         return result
 
     def _run(self, dry_run: bool) -> RunResult:
-        log.info("Inicio de sync%s", " (simulación)" if dry_run else "")
+        log.info("Sync started%s", " (simulation)" if dry_run else "")
         self._purge_trash_daily()
         if self.auth.state == "disconnected":
             self.auth.connect()
         if self.auth.state != "ok":
-            log.info("Sync en pausa: sesión de iCloud en estado %s. %s", self.auth.state, self.auth.message)
+            log.info("Sync paused: iCloud session in state %s. %s", self.auth.state, self.auth.message)
             return RunResult(status="skipped", dry_run=dry_run,
                              message=AUTH_WAIT_TEXT.get(self.auth.state, self.auth.state))
         if self.photos_probe is not None:
@@ -168,7 +168,7 @@ class SyncService(WatchdogMixin):
             if self.heic is not None and result.status != "stopped":
                 self._merge(result, self.heic.run(dry_run=dry_run))
         except AuthRequired as exc:
-            log.warning("Sesión caducada durante la sync: %s", exc)
+            log.warning("Session expired during the sync: %s", exc)
             # Con las cookies de confianza Apple suele dejar entrar sin 2FA; si no, pasa a needs_2fa.
             self.auth.connect()
             return RunResult(status="error", dry_run=dry_run,
@@ -186,7 +186,7 @@ class SyncService(WatchdogMixin):
         )
         for w in result.warnings:
             log.info("Aviso: %s", w)
-        log.info("Fin de sync: %s %s", result.status, result.counts)
+        log.info("Sync finished: %s %s", result.status, result.counts)
         return result
 
     def _run_apps(self, result: RunResult, dry_run: bool) -> None:
@@ -195,7 +195,7 @@ class SyncService(WatchdogMixin):
         try:
             apps = self.apps.run(dry_run=dry_run)
         except SyncAborted as exc:
-            log.error("Copia de las apps abortada: %s", exc)
+            log.error("App copy aborted: %s", exc)
             result.errors.append(f"Copia de las apps abortada: {exc}")
             result.status = "partial"
             return
@@ -219,7 +219,7 @@ class SyncService(WatchdogMixin):
         if self.db.get("trash_purged_on") != today:
             removed = self.local.purge_trash(self.trash_days)
             if removed:
-                log.info("Papelera local: purgados %d días con más de %d días", removed, self.trash_days)
+                log.info("Local trash: purged %d days older than %d days", removed, self.trash_days)
             self.db.set("trash_purged_on", today)
 
     # --- avisos ---------------------------------------------------------------------------------

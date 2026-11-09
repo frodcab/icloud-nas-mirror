@@ -1,0 +1,61 @@
+name: Checks
+
+# Reusable: called by ci.yml (every push and pull request) and by publish.yml (gate before publishing an image).
+on:
+  workflow_call:
+    inputs:
+      arm64:
+        description: "Also check that the arm64 image has its native libraries (slow: runs under QEMU)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pyflakes + pytest (same Python image as production)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: test            # the Dockerfile's test stage: pyflakes + pytest; the build fails if they fail
+          push: false
+          cache-from: type=gha,scope=test
+          cache-to: type=gha,mode=max,scope=test
+
+  smoke:
+    name: Smoke test of the built image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: icloud-nas-mirror:smoke
+          cache-from: type=gha,scope=smoke
+          cache-to: type=gha,mode=max,scope=smoke
+      - name: Start the image (login on and login off) and check the panel answers
+        run: bash scripts/smoke.sh icloud-nas-mirror:smoke
+
+      - if: inputs.arm64
+        uses: docker/setup-qemu-action@v4
+      - if: inputs.arm64
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          push: false
+          tags: icloud-nas-mirror:arm64
+      - name: arm64 image has its native libraries
+        if: inputs.arm64
+        run: |
+          docker run --rm --platform linux/arm64 icloud-nas-mirror:arm64 python -c \
+            "import PIL, pillow_heif, argon2, cryptography, pydantic_core, pyicloud; print('arm64 OK, libheif', pillow_heif.libheif_version())"

@@ -15,13 +15,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="iCloud NAS">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="/static/i18n-core.js"></script>
+<script src="/static/i18n.js"></script>
 </head>
 <body>
 <div id="offline" class="banner hidden">Sin conexión con la app. Reintentando…</div>
+<div id="auth-banner" class="banner hidden">Acceso sin autenticación (AUTH_DISABLED): cualquiera que llegue a esta dirección puede usar el panel. Protégelo con tu VPN o tu proxy.</div>
 
 <main>
   <nav class="topnav"><span class="muted small">iCloud ⇄ NAS</span>
-    <span><a href="/cuenta">Cuenta</a> · <button class="link" id="logout">Salir</button></span></nav>
+    <span><span id="lang-switch"></span><span id="account-nav"> · <a href="/cuenta">Cuenta</a> · <button class="link" id="logout">Salir</button></span></span></nav>
 
   <!-- Común a Archivos y Fotos: la sesión de Apple es una sola -->
   <section class="card attention hidden" id="twofa">
@@ -102,7 +105,7 @@
   <section class="card attention hidden" id="conflicts-card">
     <h2>Conflictos por revisar <span class="badge" id="conflicts-count"></span></h2>
     <p class="muted small">El fichero cambió en el NAS y en iCloud a la vez. La versión de iCloud se
-      queda con el nombre original y la del NAS se guarda al lado como «(conflicto NAS …)». Revisa,
+      queda con el nombre original y la del NAS se guarda al lado como <b id="conflict-label"></b>. Revisa,
       borra la que sobre y márcalo como revisado.</p>
     <ul class="list" id="conflicts"></ul>
   </section>
@@ -195,9 +198,9 @@
       <summary><h2>Cómo funciona</h2></summary>
       <ul class="rules">
         <li>Cada foto se guarda en <b>AAAA/MM</b> según su fecha, con el vídeo si es un Live Photo y, si la
-          editaste en el iPhone, la edición al lado como «(editada)».</li>
+          editaste en el iPhone, la edición al lado como <b id="ph-edited-name"></b>.</li>
         <li>Lo que dejes en <b id="ph-upload"></b> se sube a Fotos y, cuando iCloud lo tiene, pasa a su mes.</li>
-        <li>Tus álbumes (y Favoritas) están en <b>Álbumes/</b>, como en iCloud: son enlaces a las fotos de su mes,
+        <li>Tus álbumes (y Favoritas) están en <b id="ph-albums-dir"></b>, como en iCloud: son enlaces a las fotos de su mes,
           no ocupan más. Las ocultas viven aparte, en su propia carpeta (la de «Configuración de Fotos»):
           ocultar una en el iPhone la mueve ahí y mostrarla la devuelve a su mes.</li>
         <li>Si borras una foto en el NAS, se borra en iCloud (va a Eliminados recientemente, 30 días). Si la
@@ -240,7 +243,7 @@
   </div>
 
   <footer class="muted small" id="footer"></footer>
-  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente · Source code (AGPL-3.0)</a></p>
+  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente (AGPL-3.0)</a></p>
 </main>
 
 <div id="toasts" aria-live="polite"></div>

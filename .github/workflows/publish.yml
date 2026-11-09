@@ -15,7 +15,14 @@ permissions:
   attestations: write
 
 jobs:
+  # Nothing is published unless the tests and the smoke test (also on arm64) pass for this very commit
+  checks:
+    uses: ./.github/workflows/checks.yml
+    with:
+      arm64: true
+
   publish:
+    needs: checks
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

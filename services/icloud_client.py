@@ -56,7 +56,7 @@ class ICloudAuth:
     def _set(self, state: str, message: str = "") -> None:
         changed = state != self.state
         self.state, self.message = state, message
-        log.info("Sesión iCloud: %s %s", state, message)
+        log.info("iCloud session: %s %s", state, message)
         if changed and self.on_change:
             self.on_change(state, message)
 
@@ -97,7 +97,7 @@ class ICloudAuth:
                     return self.state
                 except Exception:
                     # Mismo fallback que la CLI de pyicloud: el código que ya muestre el iPhone vale.
-                    log.warning("No se pudo solicitar el código 2FA; se usará el que muestre el dispositivo",
+                    log.warning("Could not request the 2FA code; the one the device shows will be used",
                                 exc_info=True)
                     self.api.use_existing_trusted_device_code()
                 self.delivery = getattr(self.api, "two_factor_delivery_method", "") or ""
@@ -116,10 +116,10 @@ class ICloudAuth:
             try:
                 valid, detail = self._validate_code(code.strip())
             except Exception as exc:
-                log.exception("Error validando el código 2FA")
+                log.exception("Error validating the 2FA code")
                 return False, f"Error validando el código: {type(exc).__name__}: {exc}"
             if not valid:
-                log.warning("Código 2FA rechazado (%s): %s", self.delivery or "?", detail)
+                log.warning("2FA code rejected (%s): %s", self.delivery or "?", detail)
                 return False, ("Código incorrecto o caducado. Si has pedido un código nuevo, usa solo el "
                                f"último que te ha llegado. ({detail})")
             if not self.api.is_trusted_session:
@@ -306,7 +306,7 @@ class ICloudDriveRemote:
                 if attempt == attempts:
                     raise
             wait = 2 ** attempt
-            log.info("Error temporal de iCloud, reintento %d/%d en %ds", attempt, attempts - 1, wait)
+            log.info("Temporary iCloud error, retry %d/%d in %ds", attempt, attempts - 1, wait)
             time.sleep(wait)
 
     def _drive(self):
@@ -431,7 +431,7 @@ class ICloudDriveRemote:
             if fresh is None or (fresh.size or 0) != written:
                 raise IOError(f"el tamaño no cuadra ({written} bytes descargados, iCloud dice "
                               f"{entry.size}); se reintenta en la próxima sync")
-            log.info("%s cambió en iCloud durante la sync; se guarda la versión nueva", entry.path)
+            log.info("%s changed in iCloud during the sync; the new version is kept", entry.path)
             entry.size, entry.etag = written, fresh.data.get("etag")
             entry.mtime = _epoch(fresh.date_modified)
             nodes[entry.path] = fresh
@@ -462,8 +462,8 @@ class ICloudDriveRemote:
         flattened = flatten_package_zip(dest, posixpath.basename(path))
         if len(self._packages_logged) < 3:
             self._packages_logged.add(path)
-            log.info("Paquete %s: zip válido con %d entradas%s", path, len(names),
-                     "; guardado como archivo único de iWork" if flattened else "")
+            log.info("Package %s: valid zip with %d entries%s", path, len(names),
+                     "; saved as a single iWork file" if flattened else "")
 
     def upload(self, source: Path, rel_path: str, mtime: float) -> RemoteEntry | None:
         parent_path, name = posixpath.split(rel_path)
@@ -482,7 +482,7 @@ class ICloudDriveRemote:
                     docwsid=child.data.get("docwsid", ""), zone=child.data.get("zone", ""),
                 )
             time.sleep(2)
-        log.warning("Subido %s pero aún no aparece en el listado; se confirmará en el siguiente run", rel_path)
+        log.warning("Uploaded %s but it does not show in the listing yet; it will be confirmed in the next run", rel_path)
         return None
 
     def trash(self, entry: RemoteEntry) -> None:

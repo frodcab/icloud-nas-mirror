@@ -7,21 +7,21 @@
 Self-hosted **two-way sync between iCloud Drive / iCloud Photos and a folder on your NAS or server**, with a web panel, 2FA login and safety limits. One Docker container, `amd64` and `arm64`.
 
 > **Status: beta.** It has run for weeks on the author's own account, but it relies on an interface Apple does not document or support. Read [Risks](#risks-read-this-first) before using it.
-> The web panel is currently **in Spanish only**; English is planned (see the roadmap at the end).
+> The web panel and the e-mails come in **English and Spanish**: switch with **ES · EN** at the top of the panel (it follows your browser language by default), and set `NOTIFY_LANG` for e-mails. Logs are in English. The names of the folders and files the app creates on disk (`Albums/`, `Hidden/`, `Upload/`, `(edited)`, `(NAS conflict …)`) are chosen with `NAMES_LANG` (`en` or `es`): pick it **before the first sync**, because those names are stored in the state databases.
 
 ## What it does
 
 **iCloud Drive ⇄ a folder** (two ways)
-- Changes on either side are propagated. Conflicts keep both copies (`name (conflicto NAS YYYY-MM-DD HHMM).ext`).
+- Changes on either side are propagated. Conflicts keep both copies (`name (NAS conflict YYYY-MM-DD HHMM).ext`; `conflicto NAS` with `NAMES_LANG=es`).
 - Nothing is lost silently: deletions go through a trash (`data/trash/`, 30 days by default) and iCloud's *Recently Deleted*.
 - More than `CONFIRM_DELETES_OVER` deletions in one run **wait for your confirmation** in the panel.
 - Optional: a `photo.jpg` next to every `photo.heic` (high quality, EXIF/GPS/colour profile kept; the HEIC is never touched).
 - App libraries (Pages, Numbers, Keynote, Shortcuts…) are copied iCloud → disk, one way.
 
 **iCloud Photos ⇄ `Photos/iCloud/YYYY/MM/`** (two ways)
-- Originals, edited versions (`… (editada)`), Live Photo videos, and your albums (as hard links under `Álbumes/<album>/`).
+- Originals, edited versions (`… (edited)`), Live Photo videos, and your albums (as hard links under `Albums/<album>/`). With `NAMES_LANG=es` these are `(editada)` and `Álbumes/`.
 - Hidden photos can go to their own folder, outside your photo manager's library.
-- Put files in `Subir/` to upload them to iCloud Photos. Deleting a photo on disk deletes it in iCloud (with confirmation above the limit).
+- Put files in `Upload/` (`Subir/` with `NAMES_LANG=es`) to upload them to iCloud Photos. Deleting a photo on disk deletes it in iCloud (with confirmation above the limit).
 - Built to be gentle with your account: per-run limits (downloads, GB, uploads, deletions), pauses between transfers, automatic back-off when Apple slows down, random sampling so a few slow files never block the rest.
 
 **Operation**
@@ -89,6 +89,13 @@ Everything is an environment variable; see [`.env.example`](.env.example) and [`
 - `X-Forwarded-For` is only trusted from the container's gateway. Put the panel behind a reverse proxy with HTTPS if you expose it beyond your LAN.
 - Your Apple password lives only in `data/secrets.env` (mode 600) and in memory. Apple's session cookies are kept in `data/session/`. **Protect the `data/` folder like a password manager.**
 - Use a long, unique `GUI_PASS`; you can change it from the panel afterwards.
+- **Running without the login.** If you already protect the panel (a VPN such as Tailscale/WireGuard, or a reverse proxy with its own
+  authentication such as Authelia/Authentik), set `AUTH_DISABLED=true`. There is then no user, password or TOTP, and no *Account* page. This is
+  **off by default** and it is a real trade-off: anyone who can reach the port can confirm deletions, enter your Apple 2FA code or play a sound
+  on your devices. Safeguards that stay on: only private networks (`10/8`, `172.16/12`, `192.168/16`, loopback, `100.64/10`) are accepted unless you set
+  `AUTH_ONLY_NETWORKS` (or `AUTH_ALLOW_PUBLIC=true`, your responsibility); the anti-CSRF check stays; and the `Host` header must be an IP, a
+  local name (`nas`, `*.local`, `*.lan`) or one you list in `AUTH_ALLOWED_HOSTS`/`PUBLIC_URL` (protection against DNS rebinding). Behind a proxy that
+  is not in `AUTH_TRUSTED_PROXIES` the app only sees the proxy's address, so the network check cannot protect you: do it in the proxy.
 - `/health` is public and returns no personal data (version, auth state, last run status).
 - Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
@@ -121,7 +128,7 @@ Issues and suggestions are welcome. Pull requests are **not accepted for now** (
 
 ## Roadmap
 
-- English and Spanish interface (the panel is Spanish only today); more languages later.
+- More interface languages (a language is one `static/i18n-<code>.json` file; translations are welcome as issues).
 - Screenshots and a short video in this README.
 - More tests against real accounts before each release.
 

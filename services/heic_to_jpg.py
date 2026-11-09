@@ -273,7 +273,7 @@ class HeicToJpg:
                 self.db.move(src, new)
                 rows[new] = rows.pop(src)
                 by_key[(os.path.basename(src), r[0], r[1])] = []
-                log.info("HEIC movido/renombrado: %s → %s (se conserva su historial)", src, new)
+                log.info("HEIC moved/renamed: %s → %s (its history is kept)", src, new)
         return rows
 
     def run(self, dry_run: bool = False) -> RunResult:
@@ -326,7 +326,7 @@ class HeicToJpg:
         if self.progress:
             self.progress.set_phase("heic")
             self.progress.set_plan(len(todo), 0)   # avanza por fotos: los bytes no aplican aquí
-        log.info("Creando %d JPG a partir de HEIC", len(todo))
+        log.info("Creating %d JPGs from HEIC", len(todo))
         done = 0
         for src, jpg, why in todo:
             if self.progress and self.progress.stop_requested:

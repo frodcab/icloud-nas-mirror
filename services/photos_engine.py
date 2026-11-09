@@ -29,20 +29,18 @@ from pathlib import Path
 from typing import Callable
 
 from services.entries import AuthRequired, RunResult, SyncAborted
+from core import names
 from services.local_fs import LocalTree, is_excluded
 from services.photos_db import PhotoFile, PhotosDB
 from services.photos_limits import PhotosLimits, RunBudget
-from services.photos_albums import ALBUMS_DIR, EXTERNAL_HIDDEN, HIDDEN_DIR, AlbumsMirror
+from services.photos_albums import EXTERNAL_HIDDEN, AlbumsMirror
 from services.photos_remote import GONE, HIDDEN, LOOKUP_BATCH, URL_MAX_AGE_S, RemoteAsset, RemoteFile, Throttled
 from services.progress import Progress
 
 log = logging.getLogger(__name__)
 
-UPLOADED = ".subidos"            # dentro de Subir/: ya subidas, esperando a que iCloud las indexe
-REJECTED = "_no_admitidas"       # dentro de Subir/: Apple las rechazó 3 veces
 UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".heic", ".heif", ".png", ".gif", ".tif", ".tiff", ".dng", ".cr2", ".cr3",
                      ".nef", ".arw", ".raf", ".orf", ".rw2", ".mov", ".mp4", ".m4v", ".3gp"}
-SUFFIX = {"original": "", "live": "", "edited": " (editada)", "edited_live": " (editada)"}
 LISTING_COMPLETE = 0.98          # listado < 98 % de lo que dice el contador → no se borra nada en el NAS
 FULL_EVERY_S = 7 * 86400         # vuelta completa (red de seguridad) una vez por semana
 BACKFILL_END_IDLE_PAGES = 5      # páginas seguidas sin nada nuevo, ya pasado lo cubierto: es el final del índice
@@ -65,15 +63,15 @@ class DeleteCandidate:
 class PhotosEngine:
     def __init__(self, db: PhotosDB, root: Path, trash_dir: Path, remote, limits: PhotosLimits,
                  excludes: list[str], confirm_deletes_over: int, progress: Progress | None = None,
-                 upload_dir: str = "Subir", min_age_s: float = 120, sleep: Callable[[float], None] = time.sleep,
+                 upload_dir: str | None = None, min_age_s: float = 120, sleep: Callable[[float], None] = time.sleep,
                  hidden_enabled: bool = True, hidden_dir: Path | None = None,
                  random_pages: int = 0, random_share: float = 0.3):
         self.db, self.root, self.remote, self.limits = db, root, remote, limits
-        self.local = LocalTree(root, trash_dir, trash_prefix="Fotos")
+        self.local = LocalTree(root, trash_dir, trash_prefix=names.PHOTOS_TRASH)
         self.excludes = excludes
         self.confirm_over = confirm_deletes_over
         self.progress = progress or Progress()
-        self.upload_dir = upload_dir
+        self.upload_dir = upload_dir or names.UPLOAD_DIR
         self.min_age_s = min_age_s
         self.sleep = sleep
         self.backfill_overlap = BACKFILL_OVERLAP
@@ -84,7 +82,7 @@ class PhotosEngine:
         self.hidden_enabled = hidden_enabled
         self.hidden_dir = Path(hidden_dir) if hidden_dir else None
         if self.hidden_dir is None:
-            self.hidden_prefix = HIDDEN_DIR
+            self.hidden_prefix = names.HIDDEN_DIR
         else:
             try:
                 self.hidden_prefix = str(self.hidden_dir.relative_to(self.root))
@@ -104,7 +102,7 @@ class PhotosEngine:
         return path.startswith(self.hidden_prefix + "/")
 
     def _trash(self, path: str) -> None:
-        dest = self.local.trash_dir / datetime.now().strftime("%Y-%m-%d") / "Fotos" / path.replace(EXTERNAL_HIDDEN, "Oculto", 1)
+        dest = self.local.trash_dir / datetime.now().strftime("%Y-%m-%d") / names.PHOTOS_TRASH / path.replace(EXTERNAL_HIDDEN, names.HIDDEN_NAME, 1)
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists():
             dest = dest.with_name(f"{dest.name}.{int(time.time())}")
@@ -119,7 +117,7 @@ class PhotosEngine:
             if not base.is_dir():
                 continue
             for dirpath, _dirs, files in os.walk(base):
-                if Path(dirpath).name == ALBUMS_DIR:
+                if Path(dirpath).name == names.ALBUMS_DIR:
                     continue
                 for name in files:
                     if name.startswith(".") and name.endswith(".part"):
@@ -131,7 +129,7 @@ class PhotosEngine:
                         except OSError:
                             pass
         if n:
-            log.info("Fotos: %d temporales de descargas cortadas borrados", n)
+            log.info("Photos: %d temporary files of interrupted downloads deleted", n)
         return n
 
     def run(self, dry_run: bool = False) -> tuple[RunResult, RunBudget]:
@@ -141,7 +139,7 @@ class PhotosEngine:
                 try:
                     self.clean_orphan_parts()
                 except Exception:
-                    log.exception("Fotos: no se pudieron limpiar los temporales")
+                    log.exception("Photos: could not clean the temporary files")
         budget = RunBudget(self.limits, sleep=self.sleep)
         self.remote.budget = budget
         result = RunResult(dry_run=dry_run)
@@ -163,8 +161,8 @@ class PhotosEngine:
         uploaded_now = self._uploads(inbox, known, budget) if inbox else 0
         uploads = self.db.uploads()
 
-        if self.hidden_prefix != HIDDEN_DIR and not dry_run:
-            moved = self.albums.migrate_hidden(HIDDEN_DIR, known)
+        if self.hidden_prefix != names.HIDDEN_DIR and not dry_run:
+            moved = self.albums.migrate_hidden(names.HIDDEN_DIR, known)
             if moved:
                 known, local = self.db.files(), self._scan()
         self._hidden = self.albums.hidden_ids
@@ -174,7 +172,7 @@ class PhotosEngine:
             except (AuthRequired, SyncAborted):
                 raise
             except Exception as exc:
-                log.exception("Fotos: no se pudieron revisar los álbumes")
+                log.exception("Photos: could not check the albums")
                 result.warnings.append(f"No se pudieron revisar los álbumes: {type(exc).__name__}: {exc}")
             self._hidden = self.albums.hidden_ids
             known, local = self.db.files(), self._scan()     # Oculto puede haber movido ficheros
@@ -185,7 +183,7 @@ class PhotosEngine:
             except (AuthRequired, SyncAborted):
                 raise
             except Exception as exc:
-                log.exception("Fotos: fallo bajando las ocultas")
+                log.exception("Photos: failure downloading the hidden ones")
                 result.warnings.append(f"Ocultas: {type(exc).__name__}: {exc}")
             known, local = self.db.files(), self._scan()
 
@@ -197,7 +195,7 @@ class PhotosEngine:
             except Throttled as exc:
                 budget.throttled(str(exc))
             except Exception as exc:
-                log.exception("Fotos: fallo en las páginas al azar")
+                log.exception("Photos: failure in the random pages")
                 result.warnings.append(f"Páginas al azar: {type(exc).__name__}: {exc}")
             known, local = self.db.files(), self._scan()     # lo bajado aquí debe verse como presente en el NAS
 
@@ -210,7 +208,7 @@ class PhotosEngine:
         try:
             self.albums.relink()
         except Exception as exc:
-            log.exception("Fotos: no se pudieron actualizar las carpetas de álbumes")
+            log.exception("Photos: could not update the album folders")
             result.warnings.append(f"Carpetas de álbumes: {type(exc).__name__}: {exc}")
         return out
 
@@ -235,7 +233,7 @@ class PhotosEngine:
             page, n, page_size, secs = self.remote.page_at(pos)
             probes.append({"pos": pos, "items": n, "visible": len(page), "s": round(secs, 1),
                            "at": datetime.now().isoformat(timespec="seconds")})
-            log.info("Fotos: sonda en la página alta %d: %d elementos (%d visibles) en %.1f s", pos, n, len(page), secs)
+            log.info("Photos: probe on high page %d: %d items (%d visible) in %.1f s", pos, n, len(page), secs)
             if n == 0:
                 upper = pos                    # más allá no hay nada: se acorta el rango y se sigue
                 self.db.set("random_end", str(upper))
@@ -251,7 +249,7 @@ class PhotosEngine:
                 self._run_downloads(downloads, budget)
         self.db.set("random_probe", json.dumps(probes[-10:]))
         if planned:
-            log.info("Fotos: %d ficheros bajados de páginas al azar", planned)
+            log.info("Photos: %d files downloaded from random pages", planned)
 
     def _hidden_downloads(self, local, uploads, budget: RunBudget) -> None:
         """Ocultas que faltan en el NAS: se piden por id (URL recién hechas, también para las ocultas) en
@@ -262,7 +260,7 @@ class PhotosEngine:
         if not pending:
             return
         cap = max(1, self.limits.max_downloads // 2)
-        log.info("Fotos: %d ocultas por bajar; en esta vuelta, hasta %d ficheros", len(pending), cap)
+        log.info("Photos: %d hidden photos to download; up to %d files in this run", len(pending), cap)
         planned = 0
         self.progress.set_phase("transferring")
         for i in range(0, len(pending), LOOKUP_BATCH):
@@ -372,7 +370,7 @@ class PhotosEngine:
             changed, deleted, new_token = self.remote.changes(token)
             gone |= deleted & known_assets
             to_lookup |= changed | gone
-            log.info("Fotos: la lista de cambios de Apple trae %d fotos cambiadas y %d borradas", len(changed),
+            log.info("Photos: Apple's change list brings %d changed and %d deleted photos", len(changed),
                      len(deleted))
         else:
             to_lookup |= gone
@@ -459,7 +457,7 @@ class PhotosEngine:
             page, advance, raw, page_size = self.remote.page_newest(pos)
             pages += 1
             if pages % 20 == 0:
-                log.info("Fotos: carga inicial, %d páginas leídas en esta vuelta (posición %d, %.0f s)",
+                log.info("Photos: initial load, %d pages read in this run (position %d, %.0f s)",
                          pages, pos, time.time() - (self.progress.started_at or time.time()))
             if not raw:
                 self._backfill_finished(pos)
@@ -472,7 +470,7 @@ class PhotosEngine:
                 idle += 1
                 pos += page_size
                 if idle >= BACKFILL_END_IDLE_PAGES and pos >= done_upto - self.backfill_overlap:
-                    log.info("Fotos: %d páginas seguidas sin nada nuevo desde la posición %d: final del índice",
+                    log.info("Photos: %d pages in a row with nothing new from position %d: end of the index",
                              idle, pos - idle * page_size)
                     self._backfill_finished(pos)
                     break
@@ -485,7 +483,7 @@ class PhotosEngine:
             if self._dry:
                 self._log_plan(downloads, [])
                 if pages >= 3:
-                    log.info("Fotos (simulación): carga inicial, se para tras 3 páginas")
+                    log.info("Photos (simulation): initial load, stopping after 3 pages")
                     break
                 pos += advance
                 continue
@@ -514,7 +512,7 @@ class PhotosEngine:
     def _backfill_finished(self, pos: int) -> None:
         if self._dry:
             return
-        log.info("Fotos: carga inicial terminada (%d fotos recorridas); a partir de ahora, solo cambios", pos)
+        log.info("Photos: initial load finished (%d photos walked); from now on, only changes", pos)
         self.db.set("backfill_done", "1")
         self.db.set("backfill_k", str(pos))
         self.db.set("changes_token", self.db.get("backfill_token") or None)
@@ -543,7 +541,7 @@ class PhotosEngine:
         # Álbumes/ son enlaces gestionados por la app (no cuentan); Álbumes/Oculto sí: fotos de verdad
         walks = [(self.root, "")]
         hidden_dirs = {(self.abs(self.hidden_prefix + "/x").parent, self.hidden_prefix),
-                       (self.root / HIDDEN_DIR, HIDDEN_DIR)}          # la de dentro, por si quedó algo
+                       (self.root / names.HIDDEN_DIR, names.HIDDEN_DIR)}          # la de dentro, por si quedó algo
         for start, prefix in hidden_dirs:
             if start.is_dir() and start != self.root:
                 walks.append((start, prefix))
@@ -558,7 +556,7 @@ class PhotosEngine:
             if prefix:
                 rel_dir = f"{prefix}/{rel_dir}" if rel_dir else prefix
             dirnames[:] = [d for d in dirnames if not d.startswith(".")
-                           and not (not prefix and rel_dir == "" and d in (self.upload_dir, ALBUMS_DIR))
+                           and not (not prefix and rel_dir == "" and d in (self.upload_dir, names.ALBUMS_DIR))
                            and not is_excluded(os.path.join(rel_dir, d), self.excludes)]
             for name in filenames:
                 rel = os.path.join(rel_dir, name) if rel_dir else name
@@ -580,7 +578,7 @@ class PhotosEngine:
             return []
         now, out = time.time(), []
         for dirpath, dirnames, filenames in os.walk(inbox):
-            dirnames[:] = [d for d in dirnames if d not in (UPLOADED, REJECTED) and not d.startswith(".")
+            dirnames[:] = [d for d in dirnames if d not in (names.UPLOADED, names.REJECTED) and not d.startswith(".")
                            and not is_excluded(d, self.excludes)]
             for name in sorted(filenames):
                 full = Path(dirpath) / name
@@ -604,7 +602,7 @@ class PhotosEngine:
                 self._local_changed(pf, local[pf.path])
 
     def _dismiss(self, pf: PhotoFile) -> None:
-        log.info("Fotos: %s se ha borrado en el NAS; no se volverá a descargar (iCloud no se toca)", pf.path)
+        log.info("Photos: %s was deleted on the NAS; it will not be downloaded again (iCloud is not touched)", pf.path)
         self._count("descartadas")
         if not self._dry:
             pf.dismissed = True
@@ -645,14 +643,14 @@ class PhotosEngine:
             if ref is not None:
                 # Mismo nombre base que lo ya bajado de esta foto (p.ej. el vídeo bajó en un run anterior)
                 folder, stem = os.path.split(os.path.splitext(ref.path)[0])
-                if SUFFIX[ref.role] and stem.endswith(SUFFIX[ref.role]):
-                    stem = stem[: -len(SUFFIX[ref.role])]
+                if names.SUFFIX[ref.role] and stem.endswith(names.SUFFIX[ref.role]):
+                    stem = stem[: -len(names.SUFFIX[ref.role])]
             else:
                 folder = (folders or {}).get(ra.id) or ra.date.astimezone().strftime("%Y/%m")
                 stem = self._free_stem(folder, os.path.splitext(ra.filename)[0], ra, taken)
             for role, rf in ra.files.items():
                 pf = have.get(role)
-                path = f"{folder}/{stem}{SUFFIX[role]}{os.path.splitext(rf.name)[1]}"
+                path = f"{folder}/{stem}{names.SUFFIX[role]}{os.path.splitext(rf.name)[1]}"
                 if pf is None:
                     taken.add(path)
                     if role == "original" and ra.id in uploads:
@@ -677,7 +675,7 @@ class PhotosEngine:
             for role, pf in have.items():
                 if role not in ra.files and role != "original" and not pf.dismissed:
                     # Edición deshecha en el iPhone: la copia editada sobra
-                    log.info("Fotos: %s ya no existe en iCloud (edición deshecha): a la papelera", pf.path)
+                    log.info("Photos: %s no longer exists in iCloud (edit undone): to the trash", pf.path)
                     self._count("a_papelera")
                     if not self._dry:
                         if pf.path in local:
@@ -705,7 +703,7 @@ class PhotosEngine:
         return hits[0] if len(hits) == 1 else None
 
     def _follow_move(self, orig: PhotoFile, moved: str, have, local, untracked) -> None:
-        log.info("Fotos: %s se ha movido en el NAS a %s; se sigue ahí", orig.path, moved)
+        log.info("Photos: %s was moved on the NAS to %s; it is tracked there", orig.path, moved)
         self._count("movidas_en_nas")
         untracked.pop(moved, None)
         if not self._dry:
@@ -725,7 +723,7 @@ class PhotosEngine:
     def _free_stem(folder: str, stem: str, ra: RemoteAsset, taken: set[str]) -> str:
         """Nombre base libre para TODOS los ficheros de la foto (IMG_1.HEIC + IMG_1.MOV + IMG_1 (editada).JPG)."""
         candidate, n = stem, 1
-        while any(f"{folder}/{candidate}{SUFFIX[role]}{os.path.splitext(rf.name)[1]}" in taken
+        while any(f"{folder}/{candidate}{names.SUFFIX[role]}{os.path.splitext(rf.name)[1]}" in taken
                   for role, rf in ra.files.items()):
             n += 1
             candidate = f"{stem} ({n})"
@@ -738,7 +736,7 @@ class PhotosEngine:
             self.db.put_file(PhotoFile(path, ra.id, rf.role, rf.size, rf.fingerprint, stat[0], stat[1]))
 
     def _place_upload(self, ra: RemoteAsset, rf: RemoteFile, src: str, path: str, have) -> None:
-        log.info("Fotos: %s ya está en iCloud; se coloca en %s", src, path)
+        log.info("Photos: %s is already in iCloud; it is placed in %s", src, path)
         self._count("colocadas")
         if self._dry:
             return
@@ -756,10 +754,10 @@ class PhotosEngine:
         for rel, size in inbox:
             ext = os.path.splitext(rel)[1].lower()
             if ext not in UPLOAD_EXTENSIONS:
-                self._result.warnings.append(f"{rel}: tipo de fichero que Fotos no admite; se deja en Subir/")
+                self._result.warnings.append(f"{rel}: tipo de fichero que Fotos no admite; se deja en {self.upload_dir}/")
                 continue
             if self._dry:
-                log.info("Fotos (simulación): se subiría %s (%.1f MB)", rel, size / 2**20)
+                log.info("Photos (simulation): %s would be uploaded (%.1f MB)", rel, size / 2**20)
                 self._count("subidas")
                 continue
             if self.progress.stop_requested or not budget.allow("subidas", size):
@@ -780,12 +778,12 @@ class PhotosEngine:
                 n = self.db.upload_failed(rel, f"{type(exc).__name__}: {exc}")
                 self._result.errors.append(f"subir {rel}: {type(exc).__name__}: {exc}")
                 if n >= 3:
-                    dest = self._unique(Path(self.upload_dir) / REJECTED / os.path.basename(rel))
+                    dest = self._unique(Path(self.upload_dir) / names.REJECTED / os.path.basename(rel))
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     os.replace(self.root / rel, dest)
                     self.db.clear_upload_failure(rel)
                     self._result.warnings.append(f"{rel}: Apple la ha rechazado 3 veces; movida a "
-                                                 f"{self.upload_dir}/{REJECTED}/")
+                                                 f"{self.upload_dir}/{names.REJECTED}/")
                 continue
             budget.spend("subidas", size)
             self.db.clear_upload_failure(rel)
@@ -793,11 +791,11 @@ class PhotosEngine:
             if duplicate:
                 # Apple no devuelve el id de la foto que ya tenía (comprobado con data/PRUEBA_FOTOS): no se
                 # puede esperar a "colocarla". Ya está en iCloud y la sync la baja a su mes: esta copia sobra.
-                log.info("Fotos: %s ya estaba en iCloud; la copia de Subir/ va a la papelera", rel)
+                log.info("Photos: %s was already in iCloud; the copy in %s/ goes to the trash", rel, self.upload_dir)
                 self.local.to_trash(rel)
                 self._count("ya_estaban")
                 continue
-            dest = self._unique(Path(self.upload_dir) / UPLOADED / os.path.basename(rel))
+            dest = self._unique(Path(self.upload_dir) / names.UPLOADED / os.path.basename(rel))
             dest.parent.mkdir(parents=True, exist_ok=True)
             os.replace(self.root / rel, dest)
             self.db.add_upload(asset_id, str(dest.relative_to(self.root)))
@@ -835,7 +833,7 @@ class PhotosEngine:
             if not self._dry:
                 self.db.set_pending_batch([(c.kind, c.path, c.size, c.side) for c in held])
             else:
-                log.info("Fotos (simulación): %d borrados quedarían pendientes de confirmar", len(held))
+                log.info("Photos (simulation): %d deletions would be left waiting for confirmation", len(held))
         elif not self._dry:
             self.db.clear_pending_batch()
         return execute, restore
@@ -846,7 +844,7 @@ class PhotosEngine:
             # Lo borrado en el NAS vuelve a bajarse de iCloud a su sitio
             # Se olvida la foto ya: si la descarga no cabe en este run, el siguiente la ve como nueva y
             # la baja, en vez de tomarla otra vez por "borrada en el NAS" (y borrarla en iCloud).
-            log.info("Fotos: se recupera %s desde iCloud", c.path)
+            log.info("Photos: %s is recovered from iCloud", c.path)
             ra = assets[c.asset_id]
             files = {pf.role: pf for pf in known.values() if pf.asset_id == c.asset_id}
             if not self._dry:
@@ -854,7 +852,7 @@ class PhotosEngine:
             return [(ra, rf, files[role].path, None) for role, rf in ra.files.items()
                     if role in files and not files[role].dismissed]
         # Borrada en iCloud: los ficheros del NAS se quedan y dejan de estar sincronizados
-        log.info("Fotos: %s se conserva en el NAS (ya no está en iCloud; deja de sincronizarse)", c.path)
+        log.info("Photos: %s is kept on the NAS (it is no longer in iCloud; it stops syncing)", c.path)
         if not self._dry:
             self.db.forget_asset(c.asset_id)
         return []
@@ -872,10 +870,10 @@ class PhotosEngine:
             try:
                 if c.side == "icloud":
                     self.remote.delete(c.asset_id)
-                    log.info("Fotos: %s borrada en el NAS → borrada en iCloud (Eliminados recientemente)", c.path)
+                    log.info("Photos: %s deleted on the NAS → deleted in iCloud (Recently Deleted)", c.path)
                     self._count("borradas_en_icloud")
                 else:
-                    log.info("Fotos: %s borrada en iCloud → a la papelera del NAS", c.path)
+                    log.info("Photos: %s deleted in iCloud → to the NAS trash", c.path)
                     self._count("a_papelera")
                 for pf in files_of.get(c.asset_id, []):
                     if self.abs(pf.path).exists():
@@ -909,7 +907,7 @@ class PhotosEngine:
             ids.add(ra.id)
             batch.append((ra.id, f))
         n = self.remote.refresh_urls(batch)
-        log.info("Fotos: URL renovadas para %d ficheros (%d fotos)", n, len(ids))
+        log.info("Photos: URLs renewed for %d files (%d photos)", n, len(ids))
 
     def _retry_due(self) -> bool:
         now = time.time()
@@ -935,7 +933,7 @@ class PhotosEngine:
         random.shuffle(retry)
         waiting = len(downloads) - len(fresh) - len(retry)
         if waiting:
-            log.info("Fotos: %d ficheros esperan antes de reintentarse (fallaron hace poco)", waiting)
+            log.info("Photos: %d files wait before being retried (they failed recently)", waiting)
         return fresh + retry
 
     def _run_downloads(self, downloads, budget: RunBudget) -> None:
@@ -961,13 +959,13 @@ class PhotosEngine:
             except (AuthRequired, Throttled):
                 raise
             except Exception as exc:
-                log.info("Fotos: no se pudieron renovar las URL (%s); se intenta con las que hay", exc)
+                log.info("Photos: could not renew the URLs (%s); trying with the ones we have", exc)
             dest = self.abs(path)
             self.progress.action_start("download", path, rf.size)
             try:
                 if old is not None and dest.exists():
                     # Edición nueva en el iPhone: la versión anterior se guarda en la papelera
-                    trash = self.local.trash_dir / datetime.now().strftime("%Y-%m-%d") / "Fotos" / path
+                    trash = self.local.trash_dir / datetime.now().strftime("%Y-%m-%d") / names.PHOTOS_TRASH / path
                     trash.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(dest, trash)
                 written = self.remote.download(rf, dest, ra.date.timestamp(), asset_id=ra.id)
@@ -1005,16 +1003,15 @@ class PhotosEngine:
         for ra, rf, path, old in downloads:
             by_role.setdefault(rf.role, []).append(rf.size)
         for role, sizes in sorted(by_role.items()):
-            log.info("Fotos (simulación): se descargarían %d ficheros '%s' (%.1f GB)", len(sizes), role,
+            log.info("Photos (simulation): %d '%s' files would be downloaded (%.1f GB)", len(sizes), role,
                      sum(sizes) / 2**30)
         for ra, rf, path, old in downloads[:10]:
-            log.info("Fotos (simulación): p.ej. %s (%.1f MB)", path, rf.size / 2**20)
+            log.info("Photos (simulation): e.g. %s (%.1f MB)", path, rf.size / 2**20)
         for c in execute[:20]:
-            log.info("Fotos (simulación): se borraría %s %s", c.path,
-                     "en iCloud" if c.side == "icloud" else "del NAS (a la papelera)")
+            log.info("Photos (simulation): %s would be deleted %s", c.path,
+                     "in iCloud" if c.side == "icloud" else "from the NAS (to the trash)")
         n_lim = min(len(downloads), self.limits.max_downloads)
         self._count("descargas", n_lim)
         if len(downloads) > n_lim:
-            log.info("Fotos (simulación): con el límite de %d por run, harían falta unos %d runs para la descarga "
-                     "completa", self.limits.max_downloads, -(-len(downloads) // self.limits.max_downloads))
+            log.info("Photos (simulation): with the limit of %d per run, about %d runs would be needed for the full download", self.limits.max_downloads, -(-len(downloads) // self.limits.max_downloads))
         self._count("borrados", len(execute))

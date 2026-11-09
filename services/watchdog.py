@@ -17,6 +17,8 @@ import threading
 import time
 from datetime import datetime
 
+from core.i18n import translate_line
+
 log = logging.getLogger(__name__)
 
 
@@ -39,7 +41,7 @@ class WatchdogMixin:
             try:
                 self.check_stall()
             except Exception:
-                log.exception("Error en el vigilante de %s", self.wd_name)
+                log.exception("Error in the %s watchdog", self.wd_name)
 
     def check_stall(self, now: float | None = None) -> str:
         """Una pasada del vigilante. Devuelve ok | colgada | reinicio (para las pruebas)."""
@@ -59,7 +61,7 @@ class WatchdogMixin:
             phase = self.progress.phase
             why = (f"lleva {int(quiet // 60)} min sin dar señales de vida" if stalled else
                    f"lleva {int((now - started) // 60)} min en marcha (tope {int(self.run_max_s // 60)} min)")
-            log.error("%s: la vuelta %s (fase %s); se pide parar", self.wd_name, why, phase)
+            log.error("%s: the run %s (phase %s); asking it to stop", self.wd_name, translate_line(why, "en"), phase)
             self.progress.stop_requested = True
             self._alert(f"{self.wd_name}: la sincronización se ha quedado colgada",
                         f"La vuelta de {self.wd_name} {why} (fase: {phase}). "
@@ -67,7 +69,7 @@ class WatchdogMixin:
                         f"la aplicación. No se pierde nada: el estado está guardado y la sync continúa.")
             return "colgada"
         if now - self._stalled_at >= self.kill_grace_s:
-            log.error("%s: la vuelta sigue colgada tras %d s; se reinicia el proceso", self.wd_name, self.kill_grace_s)
+            log.error("%s: the run is still stuck after %d s; restarting the process", self.wd_name, self.kill_grace_s)
             self.db.set("restarted_by_watchdog", datetime.now().isoformat(timespec="seconds"))
             self._exit()
             return "reinicio"

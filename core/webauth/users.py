@@ -19,11 +19,10 @@ from .secretbox import SecretBox
 from .totp import hash_recovery, new_recovery_codes
 
 HELP = (
-    "Usuarios del panel. Solo hashes argon2id: NUNCA escribas una contraseña en claro. Para crear o "
-    "cambiar usuarios usa, dentro del contenedor: python -m core.webauth usuario-nuevo <nombre> | "
-    "contraseña <nombre> | desactivar <nombre> | activar <nombre> | reset-totp <nombre>. "
-    "\"activo\": false deja al usuario fuera al momento (sin reiniciar). \"email\" (opcional): dónde "
-    "enviar el código de ¿has olvidado la contraseña? (si falta, a la dirección de avisos de la app)."
+    "Panel users. Only argon2id hashes: NEVER write a plain-text password here. To create or change users, "
+    "run inside the container: python -m core.webauth new-user <name> | password <name> | disable <name> | "
+    "enable <name> | reset-totp <name>. \"activo\": false locks the user out immediately (no restart). "
+    "\"email\" (optional): where to send the forgotten-password code (if missing, to the app's notification address)."
 )
 
 
@@ -118,7 +117,7 @@ class UserStore:
             self.create(name, password, enforce_min=False)
             if len(password) < 12:
                 logging.getLogger(__name__).warning(
-                    "La contraseña inicial de '%s' tiene menos de 12 caracteres: cámbiala en /cuenta", name)
+                    "The initial password of '%s' has fewer than 12 characters: change it on the /cuenta page", name)
             return True
 
     def set_password_hash(self, name: str, new_hash: str) -> None:

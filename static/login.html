@@ -16,9 +16,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="iCloud NAS">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="/static/i18n-core.js"></script>
+<script src="/static/i18n.js"></script>
 </head>
 <body>
 <main class="narrow">
+  <p class="langbar small muted"><span id="lang-switch"></span></p>
   <section class="card" id="step-password">
     <h1>iCloud ⇄ NAS</h1>
     <p class="muted">Inicia sesión para continuar.</p>
@@ -84,7 +87,7 @@
 
   <section class="card hidden" id="step-codes">
     <h2>Guarda tus códigos de recuperación</h2>
-    <p>Si pierdes el móvil, cada uno de estos códigos te deja entrar <b>una sola vez</b>. Guárdalos en
+    <p data-i18n-html>Si pierdes el móvil, cada uno de estos códigos te deja entrar <b>una sola vez</b>. Guárdalos en
       un sitio seguro (gestor de contraseñas o papel). No se volverán a mostrar.</p>
     <pre class="codes" id="codes"></pre>
     <button id="copy-codes">Copiar</button>
@@ -92,7 +95,7 @@
   </section>
 
   <p class="form-msg bad" id="msg" role="alert"></p>
-  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente · Source code (AGPL-3.0)</a></p>
+  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente (AGPL-3.0)</a></p>
 </main>
 <script src="/static/login.js"></script>
 </body>

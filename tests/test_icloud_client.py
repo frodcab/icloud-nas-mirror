@@ -326,7 +326,7 @@ def test_package_download_is_validated_as_zip_not_by_size(tmp_path, caplog):
     with zipfile.ZipFile(tmp_path / "out") as z:          # archivo único: contenido en la raíz
         assert sorted(z.namelist()) == ["Index.zip", "preview.jpg"]
         assert z.read("Index.zip") == b"x" * 500
-    assert any("archivo único" in r.message and "Memoria.pages" in r.message for r in caplog.records)
+    assert any("single iWork file" in r.message and "Memoria.pages" in r.message for r in caplog.records)
 
 
 def test_package_download_that_is_not_a_zip_fails(tmp_path):

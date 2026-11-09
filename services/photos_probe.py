@@ -67,7 +67,7 @@ class PhotosProbe:
             api = self.auth.require_api()
             photos = api.photos
         except Exception as exc:
-            log.warning("Sonda Fotos: no se puede abrir iCloud Fotos (%s: %s)", type(exc).__name__, exc)
+            log.warning("Photos probe: cannot open iCloud Photos (%s: %s)", type(exc).__name__, exc)
             self.read_done = True
             return
         report: dict = {"fecha": datetime.now(timezone.utc).isoformat()}
@@ -76,26 +76,26 @@ class PhotosProbe:
             try:
                 report["lectura"] = self._read(photos)
             except Exception as exc:
-                log.exception("Sonda Fotos: la lectura falló")
+                log.exception("Photos probe: the read failed")
                 report["lectura"] = {"error": f"{type(exc).__name__}: {exc}"}
         if self.trigger_file.exists():
             try:
                 report["escritura"] = self._write(photos)
             except Exception as exc:
-                log.exception("Sonda Fotos: la prueba de escritura falló")
+                log.exception("Photos probe: the write test failed")
                 report["escritura"] = {"error": f"{type(exc).__name__}: {exc}"}
             try:
                 self.trigger_file.with_name(self.trigger_file.name + ".hecho").write_text(
                     json.dumps(report.get("escritura"), ensure_ascii=False, indent=2), encoding="utf-8")
                 self.trigger_file.unlink()
             except OSError:
-                log.warning("Sonda Fotos: no se pudo retirar %s; se repetiría en el próximo run", self.trigger_file)
+                log.warning("Photos probe: could not remove %s; it would be retried in the next run", self.trigger_file)
         try:
             previous = json.loads(self.out.read_text(encoding="utf-8")) if self.out.exists() else {}
             previous.update(report)
             self.out.write_text(json.dumps(previous, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         except (OSError, ValueError):
-            log.warning("Sonda Fotos: no se pudo guardar %s", self.out)
+            log.warning("Photos probe: could not save %s", self.out)
 
     # --- lectura ---------------------------------------------------------------------------------
 
@@ -185,7 +185,7 @@ class PhotosProbe:
                 resp.close()
             except Exception as exc:
                 out[name] = f"{type(exc).__name__} {_status(exc)}"
-        log.info("Sonda Fotos (URL de descarga): %s", out)
+        log.info("Photos probe (download URL): %s", out)
         return out
 
     # --- escritura (solo con data/PRUEBA_FOTOS) ---------------------------------------------------

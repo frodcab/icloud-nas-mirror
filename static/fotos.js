@@ -122,12 +122,14 @@ function renderPhotosConfig() {
   const c = PH.config || {};
   $("ph-dir").textContent = c.dir || "";
   $("ph-upload").textContent = `${c.upload_dir || "Subir"}/`;
+  $("ph-albums-dir").textContent = `${c.albums_dir || "Álbumes"}/`;      // los nombres en disco dependen de NAMES_LANG
+  $("ph-edited-name").textContent = c.edited_name || "(editada)";
   $("ph-confirm").textContent = nf.format(c.confirm_deletes_over ?? 5);
   $("ph-limits").textContent = `${nf.format(c.max_downloads || 0)} descargas o ${c.max_gb} GB, ` +
     `${nf.format(c.max_uploads || 0)} subidas y ${nf.format(c.max_deletes || 0)} borrados`;
   const rows = [
     ["Carpeta del NAS", c.dir], ["Para subir a Fotos", `${c.dir}/${c.upload_dir}`],
-    ["Álbumes (enlaces, sin ocupar más)", `${c.dir}/Álbumes`],
+    ["Álbumes (enlaces, sin ocupar más)", `${c.dir}/${c.albums_dir || "Álbumes"}`],
     ["Ocultas", c.hidden ? c.hidden_dir : "No se bajan (PHOTOS_HIDDEN=false)"],
     ["Cada", `${c.interval_min} min (más si Apple frena)`],
     ["Cómo revisa iCloud", PH.mode === "backfill" ? "Carga inicial por bloques, de lo más reciente a lo más antiguo"
@@ -194,7 +196,7 @@ async function photosDecideAll(decision) {
   const msg = decision === "confirm"
     ? "¿Borrar TODO el lote? Las fotos borradas en el NAS se borrarán en iCloud (a Eliminados recientemente, 30 días) y las borradas en iCloud irán a la papelera del NAS."
     : "¿Restaurar TODO el lote? Las borradas en el NAS se vuelven a bajar de iCloud; las borradas en iCloud se quedan en el NAS.";
-  if (!confirm(msg)) return;
+  if (!i18n.confirm(msg)) return;
   try { const r = await post(`/api/photos/pending-deletes/${phPendingBatch}/${decision}`); toast(r.message, !r.ok); }
   catch (e) { toast(e.message, true); }
   phPendingFor = null; kickPhotos();
@@ -202,7 +204,7 @@ async function photosDecideAll(decision) {
 
 $("ph-run").onclick = () => photosRun(false);
 $("ph-stop").onclick = async () => {
-  if (!confirm("¿Parar Fotos al terminar el fichero actual? La próxima vuelta continuará donde se quede.")) return;
+  if (!i18n.confirm("¿Parar Fotos al terminar el fichero actual? La próxima vuelta continuará donde se quede.")) return;
   try { const r = await post("/api/photos/stop"); toast(r.message, !r.ok); } catch (e) { toast(e.message, true); }
   kickPhotos();
 };
@@ -215,7 +217,7 @@ $("ph-pending-folders").onclick = async e => {
   const where = g.side === "icloud" ? "también en iCloud (a Eliminados recientemente, 30 días)" : "del NAS (a su papelera)";
   const msg = b.dataset.d === "confirm" ? `¿Borrar ${g.count} foto(s) de «${g.folder || "/"}» ${where}?`
     : `¿Restaurar ${g.count} foto(s) de «${g.folder || "/"}»?`;
-  if (!confirm(msg)) return;
+  if (!i18n.confirm(msg)) return;
   try {
     const r = await post(`/api/photos/pending-deletes/${phPendingBatch}/decide`, { folder: g.folder, side: g.side, decision: b.dataset.d });
     toast(r.message, !r.ok);

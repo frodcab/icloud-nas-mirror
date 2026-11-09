@@ -1,0 +1,4 @@
+# Only for the `test` stage of the Dockerfile and for CI; never installed in the final image.
+pytest==9.2.0
+pyflakes==4.1.0
+httpx==0.28.1

@@ -29,6 +29,7 @@ from pyicloud.services.photos_cloudkit import DirectionEnum, PhotoAlbumFolder, S
 from pyicloud.services.photos_cloudkit.service import PHOTO_DESIRED_KEYS
 from pyicloud.services.photos_cloudkit.mappers import record_field_value
 
+from core import names
 from services.entries import AuthRequired
 from services.photos_limits import RunBudget
 from services.progress import Progress
@@ -144,7 +145,7 @@ def describe(asset) -> RemoteAsset:
         if role == "edited_live" and ra.kind == "movie":
             role = "edited"                         # vídeo editado: su edición es el propio vídeo
         ext = EXTENSIONS.get(_field(rec, f"{prefix}FileType") or "", ".JPG" if prefix == "resJPEGFull" else ".MOV")
-        ra.files[role] = RemoteFile(role, f"{base} (editada){ext}", url, size, _field(rec, f"{prefix}Fingerprint"))
+        ra.files[role] = RemoteFile(role, f"{base}{names.EDITED_SUFFIX}{ext}", url, size, _field(rec, f"{prefix}Fingerprint"))
     return ra
 
 
@@ -206,7 +207,7 @@ class ICloudPhotosRemote:
                 retry_after = getattr(exc, "retry_after", None)
                 if isinstance(retry_after, (int, float)) and retry_after > 0:
                     wait = min(300, retry_after)
-                log.info("Apple responde %s; reintento %d/%d en %ds", code or name, attempt, limit - 1, wait)
+                log.info("Apple answers %s; retry %d/%d in %ds", code or name, attempt, limit - 1, wait)
                 self.sleep(wait)
 
     def _library(self):
@@ -224,7 +225,7 @@ class ICloudPhotosRemote:
         except AuthRequired:
             raise
         except Exception as exc:
-            log.info("No se pudo leer el cursor de cambios de Fotos (%s); se lista entera", exc)
+            log.info("Could not read the Photos change cursor (%s); the whole library is listed", exc)
             return None
 
     def count(self) -> int:
@@ -388,14 +389,14 @@ class ICloudPhotosRemote:
         for album in self._call(lambda: list(lib.refresh_albums())):
             if isinstance(album, SmartPhotoAlbum):
                 if album.id == "Hidden":
-                    out.append(("hidden", ["Oculto"], album))
+                    out.append(("hidden", [names.HIDDEN_NAME], album))
                 elif album.id == "Favorites":
                     out.append(("album", ["Favoritas"], album))
                 continue
             if isinstance(album, PhotoAlbumFolder):
                 continue
             # Un álbum sin nombre (lo hay: ~6.300 fotos) iría suelto a Álbumes/: se le da una carpeta
-            out.append(("album", [p for p in album.fullname.split("/") if p.strip()] or ["Sin nombre"], album))
+            out.append(("album", [p for p in album.fullname.split("/") if p.strip()] or [names.UNNAMED], album))
         return out
 
     def refresh_urls(self, items: list[tuple[str, RemoteFile]]) -> int:
@@ -446,8 +447,8 @@ class ICloudPhotosRemote:
                 break
             offset += len(page)
         else:
-            log.warning("Fotos: el álbum %s no termina tras %d páginas; se usa lo leído", album.name, max_pages)
-        log.info("Fotos: álbum %s: %d fotos (Apple dice %d)", album.name, len(out), count)
+            log.warning("Photos: album %s does not end after %d pages; what was read is used", album.name, max_pages)
+        log.info("Photos: album %s: %d photos (Apple says %d)", album.name, len(out), count)
         return out
 
     def _changes_raw(self, lib, since: str) -> tuple[set[str], set[str]]:
@@ -483,7 +484,7 @@ class ICloudPhotosRemote:
                 break
             zone_req.syncToken = zone.get("syncToken")
         if ignored:
-            log.warning("Fotos: %d registros de la lista de cambios sin tipo, ignorados (p. ej. %s)", len(ignored),
+            log.warning("Photos: %d records in the change list without a type, ignored (e.g. %s)", len(ignored),
                         ignored[0])
         return changed, deleted
 
@@ -508,7 +509,7 @@ class ICloudPhotosRemote:
                     raise
                 # 6/11: Apple devolvió un registro de forma rara (sin tipo ni fecha de creación) y pyicloud rechaza
                 # la página entera. Se relee la misma lista sin validar y se ignora lo que no se entiende.
-                log.warning("Fotos: pyicloud no valida la lista de cambios de Apple; se lee sin validar (%s)",
+                log.warning("Photos: pyicloud does not validate Apple's change list; reading it without validation (%s)",
                             str(exc.__cause__ or exc).splitlines()[0][:120])
                 changed, deleted = self._changes_raw(lib, since)
             return changed, deleted, lib._current_sync_token

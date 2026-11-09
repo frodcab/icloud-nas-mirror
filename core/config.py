@@ -5,6 +5,8 @@
 import os
 from pathlib import Path
 
+from core import names
+
 
 def _bool(name: str, default: bool) -> bool:
     return (os.getenv(name) or str(default)).strip().lower() in ("1", "true", "yes", "si", "sí")
@@ -36,7 +38,7 @@ def _load_secrets_file() -> None:
 
 _load_secrets_file()
 
-APP_VERSION = os.getenv("APP_VERSION", "2026.11.07.01")
+APP_VERSION = os.getenv("APP_VERSION", "2026.11.09.01")
 BUILD_DATE = os.getenv("BUILD_DATE", "")
 
 # Cuenta de Apple. Sin ellas la app arranca (para que /health responda) pero no sincroniza.
@@ -80,7 +82,7 @@ PHOTOS_DIR = Path(os.getenv("PHOTOS_DIR") or str(PHOTOS_HOME / "Photos" / "iClou
 PHOTOS_HIDDEN = _bool("PHOTOS_HIDDEN", True)
 _hidden = (os.getenv("PHOTOS_HIDDEN_DIR") or "").strip()
 PHOTOS_HIDDEN_DIR = (Path(_hidden) if _hidden.startswith("/") else PHOTOS_HOME / _hidden) if _hidden else None
-PHOTOS_UPLOAD_DIR = os.getenv("PHOTOS_UPLOAD_DIR") or "Subir"
+PHOTOS_UPLOAD_DIR = os.getenv("PHOTOS_UPLOAD_DIR") or names.UPLOAD_DIR
 # Por defecto solo simula: se pasa a real con PHOTOS_DRY_RUN=false en el environment del stack
 PHOTOS_DRY_RUN = _bool("PHOTOS_DRY_RUN", True)
 # Sonda de solo lectura al arrancar (services/photos_probe.py)
@@ -137,6 +139,8 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+# Idioma de los correos de aviso (es, en). Los textos del código están en español; se traducen con static/i18n-<idioma>.json
+NOTIFY_LANG = (os.getenv("NOTIFY_LANG") or "es").strip().lower()
 NOTIFY_EMAIL_TO = os.getenv("NOTIFY_EMAIL_TO", "") or SMTP_USERNAME
 # Enlace a la UI que se incluye en los correos (p.ej. para meter el código 2FA).
 PUBLIC_URL = os.getenv("PUBLIC_URL", "")
@@ -151,6 +155,11 @@ AUTH_DB = STATE_DIR / "auth.db"
 SESSION_IDLE_HOURS = float(os.getenv("SESSION_IDLE_HOURS") or "12")
 SESSION_MAX_DAYS = float(os.getenv("SESSION_MAX_DAYS") or "30")
 # Redes que nunca se bloquean (casa); denegadas siempre; y, si se define, las únicas permitidas
+# Panel SIN login, para quien ya lo protege con una VPN o un proxy con autenticación. Apagado por defecto. Solo acepta
+# redes privadas salvo que se fije AUTH_ONLY_NETWORKS o se pida AUTH_ALLOW_PUBLIC (bajo tu responsabilidad).
+AUTH_DISABLED = _bool("AUTH_DISABLED", False)
+AUTH_ALLOW_PUBLIC = _bool("AUTH_ALLOW_PUBLIC", False)
+AUTH_ALLOWED_HOSTS = _list("AUTH_ALLOWED_HOSTS")      # nombres de host con los que se abre el panel (anti DNS rebinding)
 AUTH_ALLOW_NETWORKS = _list("AUTH_ALLOW_NETWORKS", "192.168.0.0/16")
 AUTH_DENY_NETWORKS = _list("AUTH_DENY_NETWORKS")
 AUTH_ONLY_NETWORKS = _list("AUTH_ONLY_NETWORKS")

@@ -16,10 +16,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="iCloud NAS">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="/static/i18n-core.js"></script>
+<script src="/static/i18n.js"></script>
 </head>
 <body>
 <main>
-  <nav class="topnav"><a href="/">← Volver al panel</a><button class="link" id="logout">Salir</button></nav>
+  <nav class="topnav"><a href="/">← Volver al panel</a><span><span id="lang-switch"></span> · <button class="link" id="logout">Salir</button></span></nav>
 
   <section class="card">
     <h1 id="who">Cuenta</h1>
@@ -77,7 +79,7 @@
     <summary><h2>Últimos intentos de acceso</h2></summary>
     <ul class="list small" id="attempts"></ul>
   </details>
-  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente · Source code (AGPL-3.0)</a></p>
+  <p class="muted small source-link"><a href="https://github.com/frodcab/icloud-nas-mirror" target="_blank" rel="noopener">Código fuente (AGPL-3.0)</a></p>
 </main>
 <div id="toasts" aria-live="polite"></div>
 <script src="/static/cuenta.js"></script>

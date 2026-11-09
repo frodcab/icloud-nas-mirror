@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from core import names
 from services.entries import (
     Action, AuthRequired, LocalEntry, RemoteEntry, RunResult, SnapshotEntry, SyncAborted,
 )
@@ -291,7 +292,7 @@ def conflict_name(path: str, taken: set[str], now: datetime | None = None) -> st
     stem, ext = posixpath.splitext(tail)
     n = 1
     while True:
-        suffix = f" (conflicto NAS {stamp})" if n == 1 else f" (conflicto NAS {stamp} {n})"
+        suffix = f" ({names.CONFLICT} {stamp})" if n == 1 else f" ({names.CONFLICT} {stamp} {n})"
         candidate = posixpath.join(head, f"{stem}{suffix}{ext}")
         if candidate not in taken and candidate.casefold() not in {t.casefold() for t in taken}:
             return candidate
@@ -501,7 +502,7 @@ class SyncEngine:
             old_real = local[old].real
             new_real = posixpath.join(local[parent].real, posixpath.basename(new)) if parent else posixpath.basename(new)
             if dry_run:
-                log.info("[dry-run] rename_both '%s' → '%s' (en iCloud y en el NAS)", old, new)
+                log.info("[dry-run] rename_both '%s' → '%s' (in iCloud and on the NAS)", old, new)
             else:
                 try:
                     if self.progress:
@@ -509,7 +510,7 @@ class SyncEngine:
                     self.remote.rename_dir(old, new)
                     self.local.rename(old_real, new_real)
                     self.db.rename_prefix(old, new)
-                    log.info("rename_both '%s' → '%s' (en iCloud y en el NAS)", old, new)
+                    log.info("rename_both '%s' → '%s' (in iCloud and on the NAS)", old, new)
                     if self.progress:
                         self.progress.action_done("rename_both", new, 0, True, reason=f"antes '{old}'")
                 except AuthRequired:
@@ -567,7 +568,7 @@ class SyncEngine:
                     # Entre dos acciones: el snapshot ya refleja todo lo hecho, el siguiente run sigue aquí.
                     result.status = "stopped"
                     result.message = "Parada a petición del usuario; el siguiente run continúa donde se quedó"
-                    log.info("Sync parada a petición del usuario")
+                    log.info("Sync stopped at the user's request")
                     return
                 silent = a.kind in SILENT_KINDS
                 size = self._size(a, local, remote)

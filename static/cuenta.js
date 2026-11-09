@@ -3,7 +3,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const when = t => new Date(t * 1000).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
+const when = t => new Date(t * 1000).toLocaleString(i18n.locale, { dateStyle: "short", timeStyle: "short" });
 const KIND = { password: "contraseña", totp: "código", csrf: "petición de otro origen", sin_sesion: "acceso sin sesión",
                reset_request: "pidió código por email", reset_code: "código del email" };
 
@@ -32,7 +32,7 @@ function device(ua) {
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android"
     : /Mac OS/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "Dispositivo";
   const br = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "";
-  return br ? `${br} en ${os}` : os;
+  return br ? _t("{br} en {os}", { br, os: _t(os) }) : _t(os);
 }
 
 async function load() {
@@ -57,7 +57,7 @@ $("sessions").onclick = async e => {
   load();
 };
 $("revoke-all").onclick = async () => {
-  if (!confirm("¿Cerrar todas las sesiones salvo esta?")) return;
+  if (!i18n.confirm("¿Cerrar todas las sesiones salvo esta?")) return;
   try { toast((await call("POST", "/auth/sessions/revoke", { all: true })).message); } catch (err) { toast(err.message, true); }
   load();
 };
@@ -70,7 +70,7 @@ $("bans").onclick = async e => {
 $("form-ban").onsubmit = async e => {
   e.preventDefault();
   const ip = $("ban-ip").value.trim();
-  if (!ip || !confirm(`¿Bloquear ${ip} durante un año?`)) return;
+  if (!ip || !i18n.confirm(`¿Bloquear ${ip} durante un año?`)) return;
   try { toast((await call("POST", "/auth/bans", { ip, action: "ban" })).message); $("ban-ip").value = ""; } catch (err) { toast(err.message, true); }
   load();
 };
@@ -84,7 +84,7 @@ $("form-password").onsubmit = async e => {
 };
 $("form-recovery").onsubmit = async e => {
   e.preventDefault();
-  if (!confirm("Los códigos anteriores dejarán de valer. ¿Generar nuevos?")) return;
+  if (!i18n.confirm("Los códigos anteriores dejarán de valer. ¿Generar nuevos?")) return;
   try {
     const r = await call("POST", "/auth/recovery", { code: $("rec-code").value });
     $("rec-codes").textContent = r.recovery_codes.join("\n");
@@ -126,7 +126,7 @@ addPasswordToggles();
 
 $("form-reset-totp").onsubmit = async e => {
   e.preventDefault();
-  if (!confirm("Se borrará el segundo factor actual y tus códigos de recuperación, se cerrarán las demás sesiones y tendrás que escanear un QR nuevo ahora mismo. ¿Seguir?")) return;
+  if (!i18n.confirm("Se borrará el segundo factor actual y tus códigos de recuperación, se cerrarán las demás sesiones y tendrás que escanear un QR nuevo ahora mismo. ¿Seguir?")) return;
   try {
     const r = await call("POST", "/auth/totp/reset", { password: $("rt-password").value, code: $("rt-code").value });
     location.replace(r.next || "/login");

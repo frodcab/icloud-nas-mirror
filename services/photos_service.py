@@ -85,10 +85,10 @@ class PhotosSyncService(WatchdogMixin):
             try:
                 self.run_once(dry_run)
             except Exception:
-                log.exception("Error inesperado en el bucle de Fotos")
+                log.exception("Unexpected error in the Photos loop")
             wait = 0 if self._rerun else self.interval_s * self.backoff.factor
             if self.backoff.factor > 1 and not self._rerun:
-                log.info("Fotos: Apple ha frenado; la próxima vuelta espera %d min", wait // 60)
+                log.info("Photos: Apple slowed us down; the next run waits %d min", wait // 60)
             self.next_run_at = time.time() + wait
             self._rerun = False
 
@@ -96,7 +96,7 @@ class PhotosSyncService(WatchdogMixin):
 
     def run_once(self, dry_run: bool) -> RunResult:
         if self.auth.state != "ok":
-            log.info("Fotos en pausa: sesión de iCloud en estado %s", self.auth.state)
+            log.info("Photos paused: iCloud session in state %s", self.auth.state)
             return RunResult(status="skipped", message="Esperando a la sesión de Apple")
         if not self._run_lock.acquire(blocking=False):
             return RunResult(status="skipped", message="Ya hay una sync de Fotos en marcha")
@@ -106,18 +106,18 @@ class PhotosSyncService(WatchdogMixin):
         self.progress.start(dry_run)
         run_id = self.db.start_run(dry_run)
         started = time.time()
-        log.info("Inicio de sync de Fotos%s", " (simulación)" if dry_run else "")
+        log.info("Photos sync started%s", " (simulation)" if dry_run else "")
         budget = None
         try:
             result, budget = self.engine.run(dry_run=dry_run)
         except AuthRequired as exc:
-            log.warning("Fotos: sesión de Apple caducada (%s); se reintenta cuando vuelva", exc)
+            log.warning("Photos: Apple session expired (%s); it will retry when it is back", exc)
             result = RunResult(status="error", dry_run=dry_run, message=f"Sesión de iCloud caducada ({exc})")
         except SyncAborted as exc:
-            log.error("Sync de Fotos abortada: %s", exc)
+            log.error("Photos sync aborted: %s", exc)
             result = RunResult(status="aborted", dry_run=dry_run, message=str(exc))
         except Exception as exc:
-            log.exception("Sync de Fotos fallida")
+            log.exception("Photos sync failed")
             result = RunResult(status="error", dry_run=dry_run, message=f"{type(exc).__name__}: {exc}")
         finally:
             totals = self.progress.totals()
