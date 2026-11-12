@@ -9,6 +9,15 @@ Self-hosted **two-way sync between iCloud Drive / iCloud Photos and a folder on 
 > **Status: beta.** It has run for weeks on the author's own account, but it relies on an interface Apple does not document or support. Read [Risks](#risks-read-this-first) before using it.
 > The web panel and the e-mails come in **English and Spanish**: switch with **ES · EN** at the top of the panel (it follows your browser language by default), and set `NOTIFY_LANG` for e-mails. Logs are in English. The names of the folders and files the app creates on disk (`Albums/`, `Hidden/`, `Upload/`, `(edited)`, `(NAS conflict …)`) are chosen with `NAMES_LANG` (`en` or `es`): pick it **before the first sync**, because those names are stored in the state databases.
 
+<p align="center">
+  <img src="docs/screenshots/panel-files-en.png" width="23%" alt="Files tab: sync status, recent activity and history">
+  <img src="docs/screenshots/panel-photos-en.png" width="23%" alt="Photos tab: a sync in progress">
+  <img src="docs/screenshots/panel-pending-en.png" width="23%" alt="Large deletions wait for your confirmation">
+  <img src="docs/screenshots/panel-icloud-en.png" width="23%" alt="Your iCloud storage and devices">
+</p>
+
+<p align="center"><sub>Sample data. The panel follows your browser language (ES · EN).</sub></p>
+
 ## What it does
 
 **iCloud Drive ⇄ a folder** (two ways)
@@ -129,7 +138,7 @@ Issues and suggestions are welcome. Pull requests are **not accepted for now** (
 ## Roadmap
 
 - More interface languages (a language is one `static/i18n-<code>.json` file; translations are welcome as issues).
-- Screenshots and a short video in this README.
+- A short video in this README.
 - More tests against real accounts before each release.
 
 ## Licence

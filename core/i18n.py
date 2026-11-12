@@ -52,7 +52,7 @@ class Translator:
                     m = re.fullmatch(r"\{(\w+)\}", part)
                     if m:
                         names.append(m.group(1))
-                        source.append(r"(\d[\d.,]*)" if m.group(1) == "n" else r"([\s\S]+?)")
+                        source.append(r"(\d[\d.,]*)" if m.group(1) == "n" else r"((?:(?! · )[\s\S])+?)")
                     else:
                         source.append(re.escape(part))
                 weight = len(re.sub(r"\{\w+\}", "", k))
@@ -86,6 +86,11 @@ class Translator:
                         values[n] = raw
                 return _fill(out, values)
         if depth < 3:
+            if " · " in k:      # línea compuesta ("Descargado de iCloud · 12 KB · 10:31"): cada parte por separado
+                segs = k.split(" · ")
+                outs = [self.tr(p, depth + 1) for p in segs]
+                if any(o is not None for o in outs):
+                    return " · ".join(o if o is not None else p for p, o in zip(segs, outs))
             parts = _sentences(k)
             if len(parts) > 1:
                 outs = [self.tr(p, depth + 1) for p in parts]

@@ -603,5 +603,13 @@
  "{r}: tipo de fichero que Fotos no admite; se deja en {d}/": "{r}: file type that Photos does not accept; it stays in {d}/",
  "Faltan ICLOUD_USERNAME / ICLOUD_PASSWORD": "ICLOUD_USERNAME / ICLOUD_PASSWORD are missing",
  "(todo iCloud Drive)": "(all of iCloud Drive)",
- "Sesión de iCloud caducada ({e}); estado ahora: {s}": "iCloud session expired ({e}); state now: {s}"
+ "Sesión de iCloud caducada ({e}); estado ahora: {s}": "iCloud session expired ({e}); state now: {s}",
+ "{b} descargados": "{b} downloaded",
+ "{b} subidos": "{b} uploaded",
+ "{b} bajados": "{b} downloaded",
+ "{n} elementos sincronizados": "{n} items synced",
+ "{b} usados": "{b} used",
+ "↓ Descargando": "↓ Downloading",
+ "↑ Subiendo": "↑ Uploading",
+ "🗑 Borrando": "🗑 Deleting"
 }

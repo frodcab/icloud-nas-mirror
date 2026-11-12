@@ -36,6 +36,11 @@ CASES = [
      "The Photos run has been 25 min without any sign of life (phase: listing). A stop was requested; if it does not answer within 5 min the application restarts. "
      "Nothing is lost: the state is saved and the sync continues."),
     ("borrado en local pero cambiado en iCloud", "deleted locally but changed in iCloud"),
+    # líneas compuestas con " · ": un hueco no puede tragarse varias partes (salía «próxima en 31 min ago»)
+    ("última hace 14 min · próxima en 31 min", "last run 14 min ago · next run in 31 min"),
+    ("Descargado de iCloud · 214.8 KB · 10:31:05", "Downloaded from iCloud · 214.8 KB · 10:31:05"),
+    ("hace 15 min · 52 s", "15 min ago · 52 s"),
+    ("18.342 elementos sincronizados", "18.342 items synced"),
     ("Límite de la vuelta alcanzado: 1000 descargas (4,9 GB)", "Run limit reached: 1000 downloads (4,9 GB)"),
 ]
 

@@ -179,7 +179,8 @@ def test_el_catalogo_real_traduce_con_el_nucleo():
     console.log(JSON.stringify([t.tr("Sincronizar ahora"), t.tr("Cada foto se guarda en"), t.tr("Hola, esto no existe"),
       t.tr("Última sincronización: con errores"), t.tr("12 de 40 operaciones"), t.tr("hace 5 min"), t.tr("última hace unos segundos"),
       t.tr("en marcha desde hace 3 min"), t.tr("Todo sincronizado · simulación"), t.tr("¿Borrar 3 fichero(s) de «Docs» también en iCloud (a Eliminados recientemente, recuperable 30 días)?"),
-      t.tr("1.2.3.4 · último uso hace 2 min · caduca en 3 h"), t.tr("contraseña · hasta 10/11/26 11:00 · nivel 2")]));
+      t.tr("1.2.3.4 · último uso hace 2 min · caduca en 3 h"), t.tr("contraseña · hasta 10/11/26 11:00 · nivel 2"),
+      t.tr("última hace 14 min · próxima en 31 min"), t.tr("Descargado de iCloud · 214.8 KB · 10:31:05")]));
     """
     r = subprocess.run([node, "-e", script, str(STATIC / "i18n-core.js"), str(STATIC / "i18n-en.json")],
                        capture_output=True, text=True, timeout=30)
@@ -188,7 +189,8 @@ def test_el_catalogo_real_traduce_con_el_nucleo():
         "Sync now", "Each photo is saved in", None, "Last sync: with errors", "12 of 40 operations", "5 min ago",
         "last run a few seconds ago", "running for 3 min", "All synced · simulation",
         "Delete 3 file(s) from “Docs” also in iCloud (to Recently Deleted, recoverable for 30 days)?",
-        "1.2.3.4 · last used 2 min ago · expires in 3 h", "password · until 10/11/26 11:00 · level 2"]
+        "1.2.3.4 · last used 2 min ago · expires in 3 h", "password · until 10/11/26 11:00 · level 2",
+        "last run 14 min ago · next run in 31 min", "Downloaded from iCloud · 214.8 KB · 10:31:05"]
 
 
 @pytest.mark.skipif(node is None or not os.environ.get("JSDOM_DIR"), reason="opcional: necesita Node y JSDOM_DIR (ver tests/js)")

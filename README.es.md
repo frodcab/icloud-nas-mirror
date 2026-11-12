@@ -9,6 +9,15 @@
 > **Estado: beta.** Lleva semanas funcionando con la cuenta del autor, pero depende de una interfaz que Apple no documenta ni soporta. Lee los [riesgos](#riesgos-léelos-primero) antes de usarlo.
 > El panel web y los correos están en **español e inglés**: se cambia con **ES · EN** en la parte de arriba del panel (por defecto sigue el idioma del navegador) y `NOTIFY_LANG` fija el de los correos. Los logs están en inglés. Los nombres de las carpetas y ficheros que la app crea en el disco (`Álbumes/`, `Oculto/`, `Subir/`, `(editada)`, `(conflicto NAS …)`) se eligen con `NAMES_LANG` (`es` o `en`): elígelo **antes de la primera sincronización**, porque esos nombres se guardan en las bases de datos de estado.
 
+<p align="center">
+  <img src="docs/screenshots/panel-files-es.png" width="23%" alt="Pestaña Archivos: estado, actividad reciente e historial">
+  <img src="docs/screenshots/panel-photos-es.png" width="23%" alt="Pestaña Fotos: una sincronización en curso">
+  <img src="docs/screenshots/panel-pending-es.png" width="23%" alt="Los borrados grandes esperan tu confirmación">
+  <img src="docs/screenshots/panel-icloud-es.png" width="23%" alt="Almacenamiento y dispositivos de tu iCloud">
+</p>
+
+<p align="center"><sub>Datos de ejemplo. El panel sigue el idioma de tu navegador (ES · EN).</sub></p>
+
 ## Qué hace
 
 **iCloud Drive ⇄ una carpeta** (en los dos sentidos)
@@ -129,7 +138,7 @@ Se agradecen las incidencias y las sugerencias. Por ahora **no se aceptan pull r
 ## Hoja de ruta
 
 - Más idiomas de interfaz (un idioma es un fichero `static/i18n-<código>.json`; las traducciones se agradecen como incidencias).
-- Capturas y un vídeo corto en este README.
+- Un vídeo corto en este README.
 - Más pruebas con cuentas reales antes de cada versión.
 
 ## Licencia

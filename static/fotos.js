@@ -96,7 +96,7 @@ function renderPhotosProgress() {
   $("ph-legend-ops").textContent = `${nf.format(p.actions_done)} de ${nf.format(p.actions_total)} (sin pasar del límite de la vuelta)`;
   $("ph-legend-bytes").textContent = `${fmtBytes(p.bytes_done)}${p.speed_bps ? " · " + fmtBytes(p.speed_bps) + "/s" : ""}`;
   const c = p.current;
-  $("ph-current").innerHTML = c ? `${esc(PH_ACTIONS[c.kind] || c.kind)} ${pathHtml(c.path)}` +
+  $("ph-current").innerHTML = c ? `${esc(_t(PH_ACTIONS[c.kind] || c.kind))} ${pathHtml(c.path)}` +
     (c.size ? ` <span class="muted">(${fmtBytes(c.size)})</span>` : "") : "";
   $("ph-counters").innerHTML = p.errors ? `<span class="bad">✕ ${nf.format(p.errors)} con error</span>` : "";
 }
@@ -107,7 +107,7 @@ function renderPhotosRuns() {
     const errs = (r.errors || []).filter(e => !e.startsWith("aviso:"));
     const warns = (r.errors || []).filter(e => e.startsWith("aviso:"));
     const list = (arr, label) => arr.length ? `<details><summary>${arr.length} ${label}</summary><ul class="list">${arr.slice(0, 50).map(e => `<li>${esc(e.replace(/^aviso: /, ""))}</li>`).join("")}</ul></details>` : "";
-    const bytes = [r.bytes_down ? `${fmtBytes(r.bytes_down)} bajados` : "", r.bytes_up ? `${fmtBytes(r.bytes_up)} subidos` : ""].filter(Boolean).join(", ");
+    const bytes = [r.bytes_down ? _t("{b} bajados", { b: fmtBytes(r.bytes_down) }) : "", r.bytes_up ? _t("{b} subidos", { b: fmtBytes(r.bytes_up) }) : ""].filter(Boolean).join(", ");
     const summary = phCounts(r.counts) || r.message;
     return `<li><span class="when" title="${esc(fmtAbs(r.started_at))}">${esc(fmtRel(r.started_at))}
         ${r.duration_s != null ? `<span class="muted small">· ${fmtDuration(r.duration_s)}</span>` : ""}</span>

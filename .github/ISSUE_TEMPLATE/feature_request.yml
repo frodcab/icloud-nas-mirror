@@ -1,0 +1,20 @@
+name: Suggestion
+description: An idea or a missing feature (pull requests are not accepted for now, suggestions are very welcome)
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like it to do?
+      description: Describe the problem first; the solution can come after.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter to you?
+  - type: markdown
+    attributes:
+      value: |
+        This project is for people running it at home. Features aimed at companies (SSO, auditing, multi-tenant) are out of scope, and anything that
+        would make the app behave more aggressively towards Apple's servers will be declined to protect your account.

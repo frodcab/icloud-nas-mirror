@@ -2,6 +2,13 @@
 
 Versions use `YYYY.MM.DD.NN` (date plus the number of the release that day).
 
+## 2026.11.12.01 — English panel fixes, screenshots, issue templates
+
+- English panel: composed lines are now translated part by part. Before, a line such as "last run 14 min ago · next run in 31 min" could come out
+  half Spanish ("próxima en 31 min ago"), and activity lines, byte totals ("48 MB downloaded, 3 MB uploaded"), the storage total and the current
+  action in Photos stayed in Spanish. Found by rendering the panel with sample data; the screenshot generator now fails if Spanish text is left.
+- Screenshots in both READMEs, an image for sharing the project (`docs/social-preview.png`) and issue templates that warn not to paste credentials.
+
 ## 2026.11.09.01 — English interface, optional login, tests in the build
 
 - **`NAMES_LANG`** (`es` | `en`) chooses the names of the folders and suffixes the app creates on disk (`Albums`/`Álbumes`, `Hidden`/`Oculto`, `Upload`/`Subir`,

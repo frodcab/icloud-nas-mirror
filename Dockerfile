@@ -18,7 +18,7 @@ RUN python -m pyflakes main.py core services && python -m pytest -q -p no:cachep
 # --- Imagen final (la última etapa es la que se construye por defecto) --------------------------------------------
 FROM python:3.14-slim AS app
 
-ARG APP_VERSION=2026.11.09.01
+ARG APP_VERSION=2026.11.12.01
 LABEL org.opencontainers.image.title="app-integration-icloud-sync" \
       org.opencontainers.image.version="${APP_VERSION}"
 

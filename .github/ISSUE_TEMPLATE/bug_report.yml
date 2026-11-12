@@ -1,0 +1,54 @@
+name: Bug report
+description: Something does not work as the README says
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you paste anything: remove your Apple ID, e-mail addresses, passwords, 2FA codes, recovery codes, session files (`data/session/`),
+        `data/secrets.env` and any path that contains a personal name.** If in doubt, replace it with `xxx`.
+        Vulnerabilities do **not** go here: use *Security → Report a vulnerability*.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in the panel footer, or at `http://<host>:8096/health` (`version`).
+      placeholder: "2026.11.09.01"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it fail?
+      options: [iCloud Drive sync, iCloud Photos sync, Web panel / login, E-mails, Docker image / installation, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: setup
+    attributes:
+      label: Your setup
+      description: Host and CPU architecture (amd64/arm64), how you run it (compose, Synology Container Manager…), `DRY_RUN` on/off, `NAMES_LANG`.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines (redacted)
+      description: "`docker compose logs --tail 200` — remove anything personal first."
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I removed every credential, e-mail address and personal path from what I pasted
+          required: true
+        - label: I am using the latest release (`docker compose pull`)

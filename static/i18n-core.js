@@ -38,7 +38,7 @@
         const names = [];
         const source = k.split(/(\{\w+\})/).map(part => {
           const m = part.match(/^\{(\w+)\}$/);
-          if (m) { names.push(m[1]); return m[1] === "n" ? "(\\d[\\d.,]*)" : "([\\s\\S]+?)"; }
+          if (m) { names.push(m[1]); return m[1] === "n" ? "(\\d[\\d.,]*)" : "((?:(?! · )[\\s\\S])+?)"; }
           return escapeRe(part);
         }).join("");
         templates.push({ re: new RegExp("^" + source + "$"), names, out, weight: k.replace(/\{\w+\}/g, "").length });
@@ -82,6 +82,12 @@
         }
       }
       if ((depth || 0) < 3) {
+        // Una línea compuesta con " · " ("Descargado de iCloud · 12 KB · 10:31"): cada parte por separado
+        if (k.indexOf(" · ") >= 0) {
+          const segs = k.split(" · ");
+          const outs = segs.map(p => tr(p, (depth || 0) + 1));
+          if (outs.some(o => o != null)) return segs.map((p, i) => (outs[i] != null ? outs[i] : p)).join(" · ");
+        }
         // Varias frases ("Se aplica ahora." + otra): cada una por separado; si alguna se conoce, se unen
         const parts = sentences(k);
         if (parts.length > 1) {

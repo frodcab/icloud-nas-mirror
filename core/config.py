@@ -38,7 +38,7 @@ def _load_secrets_file() -> None:
 
 _load_secrets_file()
 
-APP_VERSION = os.getenv("APP_VERSION", "2026.11.09.01")
+APP_VERSION = os.getenv("APP_VERSION", "2026.11.12.01")
 BUILD_DATE = os.getenv("BUILD_DATE", "")
 
 # Cuenta de Apple. Sin ellas la app arranca (para que /health responda) pero no sincroniza.

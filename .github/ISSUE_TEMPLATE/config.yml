@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/frodcab/icloud-nas-mirror/security/advisories/new
+    about: Please report vulnerabilities privately here, NOT as a public issue.

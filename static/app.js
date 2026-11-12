@@ -162,7 +162,7 @@ function renderStatus() {
   if (P.forced_dry_run) chips.push(`<span class="chip bad">Simulación forzada (fichero data/SIMULACION): no cambia nada</span>`);
   if (S?.open_conflicts) chips.push(`<span class="chip warn">⚠ ${S.open_conflicts} conflicto(s) por revisar</span>`);
   if (S?.config?.icloud_user) chips.push(`<span class="chip">${esc(S.config.icloud_user)}</span>`);
-  if (S?.snapshot_entries) chips.push(`<span class="chip">${nf.format(S.snapshot_entries)} elementos sincronizados</span>`);
+  if (S?.snapshot_entries) chips.push(`<span class="chip">${_t("{n} elementos sincronizados", { n: nf.format(S.snapshot_entries) })}</span>`);
   $("status-chips").innerHTML = chips.join("");
 
   $("btn-run").classList.toggle("hidden", P.running);
@@ -296,7 +296,7 @@ function renderProgress() {
   if (c) {
     const a = ACTIONS[c.kind] || { icon: "•", doing: c.kind };
     const pc = c.size ? Math.min(100, 100 * c.done / c.size) : 0;
-    $("current").innerHTML = `${a.icon} ${esc(a.doing)} ${pathHtml(c.path)}` +
+    $("current").innerHTML = `${a.icon} ${esc(_t(a.doing))} ${pathHtml(c.path)}` +
       (c.size ? ` <span class="muted">(${fmtBytes(c.size)})</span><div class="bar"><div style="width:${pc}%"></div></div>` : "");
   } else $("current").innerHTML = "";
 
@@ -341,7 +341,7 @@ function renderRuns() {
     const [txt, cls] = r.finished_at ? (RUN_STATUS[r.status] || [r.status, ""]) : ["En curso", ""];
     const errs = (r.errors || []).filter(e => !e.startsWith("aviso:"));
     const warns = (r.errors || []).filter(e => e.startsWith("aviso:"));
-    const bytes = [r.bytes_down ? `${fmtBytes(r.bytes_down)} descargados` : "", r.bytes_up ? `${fmtBytes(r.bytes_up)} subidos` : ""].filter(Boolean).join(", ");
+    const bytes = [r.bytes_down ? _t("{b} descargados", { b: fmtBytes(r.bytes_down) }) : "", r.bytes_up ? _t("{b} subidos", { b: fmtBytes(r.bytes_up) }) : ""].filter(Boolean).join(", ");
     const summary = countsSummary(r.counts || {}) || (r.status === "ok" ? "Sin cambios" : r.message);
     const list = (arr, label) => arr.length ? `<details><summary>${arr.length} ${label}</summary><ul class="list">${arr.slice(0, 50).map(e => `<li>${esc(e.replace(/^aviso: /, ""))}</li>`).join("")}</ul></details>` : "";
     return `<li><span class="when" title="${esc(fmtAbs(r.started_at))}">${esc(fmtRel(r.started_at))}
@@ -459,7 +459,7 @@ async function loadStorage(refresh = false) {
     const st = await api(`/api/account/storage${refresh ? "?refresh=true" : ""}`);
     $("storage-msg").classList.add("hidden");
     $("storage-body").classList.remove("hidden");
-    $("storage-used").textContent = `${fmtBytes(st.used_bytes)} usados`;
+    $("storage-used").textContent = _t("{b} usados", { b: fmtBytes(st.used_bytes) });
     $("storage-total").textContent = `de ${fmtBytes(st.total_bytes)} · quedan ${fmtBytes(st.available_bytes)} (${st.used_percent.toLocaleString(i18n.locale)} % usado)`;
     const total = st.total_bytes || 1;
     $("storage-bar").className = "stack" + (st.over_quota || st.used_percent >= 95 ? " full" : "");
